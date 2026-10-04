@@ -471,6 +471,29 @@ HTML;
         $need = $app['financial_need'] === null ? 'Unknown' : ((int) $app['financial_need'] === 1 ? 'Yes' : 'No');
         $firstGen = $app['first_generation'] === null ? 'Unknown' : ((int) $app['first_generation'] === 1 ? 'Yes' : 'No');
 
+        $responses = $app['application_responses_json']
+            ? json_decode((string) $app['application_responses_json'], true)
+            : [];
+        $responses = is_array($responses) ? $responses : [];
+        $responseRows = '';
+
+        foreach ($responses as $question => $answer) {
+            if (is_array($answer)) {
+                $answer = implode(', ', array_map('strval', $answer));
+            } elseif (is_bool($answer)) {
+                $answer = $answer ? 'Yes' : 'No';
+            } elseif ($answer === null || trim((string) $answer) === '') {
+                continue;
+            }
+
+            $responseRows .= '<tr><th scope="row">' . View::e((string) $question) . '</th><td>'
+                . nl2br(View::e((string) $answer)) . '</td></tr>';
+        }
+
+        if ($responseRows === '') {
+            $responseRows = '<tr><td>No additional application responses were included in the imported file.</td></tr>';
+        }
+
         $body = '<div class="page-header"><div><h1>' . View::e($app['display_name']) . '</h1><p>' . View::e($app['university_id']) . ' · ' . View::e($app['email']) . '</p></div>'
             . '<a class="button secondary" href="/admin/applicants">Back to applicants</a></div>'
             . '<div class="grid">'
@@ -486,6 +509,8 @@ HTML;
             . '<tr><th>Citizenship</th><td>' . View::e($app['citizenship_country'] ?? '—') . '</td></tr>'
             . '<tr><th>First generation</th><td>' . View::e($firstGen) . '</td></tr>'
             . '</tbody></table></div></section>'
+            . '<section class="card" style="margin-top:1rem"><h2>Application responses</h2><div class="table-wrap"><table><tbody>'
+            . $responseRows . '</tbody></table></div></section>'
             . '<section class="card" style="margin-top:1rem"><h2>Scholarship eligibility</h2><div class="table-wrap"><table><thead><tr><th>Scholarship</th><th>Status</th><th>Evaluated</th></tr></thead><tbody>'
             . $eligRows . '</tbody></table></div></section>';
 
