@@ -7,6 +7,7 @@ use App\Database\AdminSeeder;
 use App\Database\BaseSeeder;
 use App\Database\Connection;
 use App\Database\Migrator;
+use App\Database\TestSeeder;
 use App\Support\Env;
 
 $root = require dirname(__DIR__) . '/app/bootstrap.php';
@@ -54,6 +55,22 @@ switch ($command) {
         fwrite(STDOUT, "Bootstrap system administrator ready (user ID {$userId}).\n");
         break;
 
+    case 'seed:test':
+        $seeder = new TestSeeder(Connection::get());
+        $result = $seeder->run();
+        fwrite(
+            STDOUT,
+            sprintf(
+                "Loaded fake test data for cycle %d: %d scholarships, %d students. Reviewer login: %s / %s\n",
+                $result['cycle_id'],
+                $result['scholarships'],
+                $result['students'],
+                $result['coordinator_email'],
+                $result['test_password']
+            )
+        );
+        break;
+
     case 'help':
     default:
         fwrite(STDOUT, "Scholarship Manager console\n\n");
@@ -61,5 +78,6 @@ switch ($command) {
         fwrite(STDOUT, "  migrate     Apply pending SQL migrations\n");
         fwrite(STDOUT, "  seed:base   Seed College departments and official graduate program offerings\n");
         fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
+        fwrite(STDOUT, "  seed:test   Load fake scholarship/reviewer/applicant data (non-production only)\n");
         break;
 }
