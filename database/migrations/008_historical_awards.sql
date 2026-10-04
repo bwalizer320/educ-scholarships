@@ -1,0 +1,42 @@
+CREATE TABLE historical_imports (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cycle_id BIGINT UNSIGNED NOT NULL,
+    file_id BIGINT UNSIGNED NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    column_mapping_json JSON NULL,
+    status ENUM('uploaded','completed','failed') NOT NULL DEFAULT 'uploaded',
+    row_count INT UNSIGNED NOT NULL DEFAULT 0,
+    imported_count INT UNSIGNED NOT NULL DEFAULT 0,
+    error_count INT UNSIGNED NOT NULL DEFAULT 0,
+    error_summary TEXT NULL,
+    imported_by_user_id BIGINT UNSIGNED NOT NULL,
+    completed_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_historical_import_cycle FOREIGN KEY (cycle_id) REFERENCES academic_cycles(id),
+    CONSTRAINT fk_historical_import_file FOREIGN KEY (file_id) REFERENCES file_objects(id),
+    CONSTRAINT fk_historical_import_user FOREIGN KEY (imported_by_user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE historical_awards (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    historical_import_id BIGINT UNSIGNED NOT NULL,
+    source_row_number INT UNSIGNED NOT NULL,
+    cycle_id BIGINT UNSIGNED NOT NULL,
+    scholarship_id BIGINT UNSIGNED NOT NULL,
+    student_id BIGINT UNSIGNED NOT NULL,
+    org_unit_id BIGINT UNSIGNED NULL,
+    award_amount DECIMAL(12,2) NOT NULL,
+    award_period ENUM('academic_year','fall','spring') NOT NULL DEFAULT 'academic_year',
+    award_origin ENUM('new','renewal','unknown') NOT NULL DEFAULT 'unknown',
+    source_values_json JSON NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_historical_award_import FOREIGN KEY (historical_import_id) REFERENCES historical_imports(id) ON DELETE CASCADE,
+    CONSTRAINT fk_historical_award_cycle FOREIGN KEY (cycle_id) REFERENCES academic_cycles(id),
+    CONSTRAINT fk_historical_award_scholarship FOREIGN KEY (scholarship_id) REFERENCES scholarships(id),
+    CONSTRAINT fk_historical_award_student FOREIGN KEY (student_id) REFERENCES students(id),
+    CONSTRAINT fk_historical_award_org FOREIGN KEY (org_unit_id) REFERENCES org_units(id),
+    UNIQUE KEY uq_historical_import_row (historical_import_id, source_row_number),
+    KEY idx_historical_cycle_scholarship (cycle_id, scholarship_id),
+    KEY idx_historical_student (student_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
