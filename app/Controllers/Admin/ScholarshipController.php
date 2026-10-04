@@ -207,10 +207,12 @@ final class ScholarshipController extends BaseAdminController
                 .'<td>'.View::e($criterion['field_key']??'Manual').'</td>'
                 .'<td>'.View::e($criterion['operator']??'—').' '.View::e($displayValue).'</td>'
                 .'<td>'.((int)$criterion['auto_evaluable']===1?'Automatic':'Display only').'</td>'
+                .'<td>'.($locked ? '' : '<form method="post" action="/admin/scholarships/'.$id.'/criteria/'.(int)$criterion['id'].'/delete">'
+                    .View::csrfField().'<button class="secondary small" type="submit">Remove</button></form>').'</td>'
                 .'</tr>';
         }
         if($criteriaRows===''){
-            $criteriaRows='<tr><td colspan="6">No structured criteria have been added.</td></tr>';
+            $criteriaRows='<tr><td colspan="7">No structured criteria have been added.</td></tr>';
         }
 
         $criterionForm=$locked
@@ -256,8 +258,9 @@ final class ScholarshipController extends BaseAdminController
             .($scholarship['structured_summary']?'<h3>Structured summary</h3><p>'.nl2br(View::e($scholarship['structured_summary'])).'</p>':'')
             .($scholarship['source_reference']?'<p><strong>Source:</strong> '.View::e($scholarship['source_reference']).'</p>':'')
             .'</section>'
+            .($locked ? '' : $this->rulesForm($id,$scholarship))
             .'<section class="card" style="margin-top:1rem"><h2>Structured criteria</h2><div class="table-wrap"><table>'
-            .'<thead><tr><th>Kind</th><th>Label</th><th>Requirement</th><th>Field</th><th>Comparison</th><th>Evaluation</th></tr></thead>'
+            .'<thead><tr><th>Kind</th><th>Label</th><th>Requirement</th><th>Field</th><th>Comparison</th><th>Evaluation</th><th></th></tr></thead>'
             .'<tbody>'.$criteriaRows.'</tbody></table></div></section>'
             .$criterionForm
             .$this->newVersionForm($id,$scholarship);
@@ -315,6 +318,75 @@ final class ScholarshipController extends BaseAdminController
             ]);
 
             Flash::success('Structured criterion added.');
+        }catch(\Throwable $e){
+            Flash::error($e->getMessage());
+        }
+
+        $this->redirect('/admin/scholarships/'.$id);
+    }
+
+    public function saveRules(array $params): never
+    {
+        $this->requireAdmin();
+        $this->requirePost();
+        $id=(int)($params['id']??0);
+
+        try{
+            $intent=$this->currentIntent($id);
+            if($this->intentLocked((int)$intent['id'])){
+                throw new RuntimeException('This donor-intent version is already in use and cannot be modified.');
+            }
+
+            $amountMode=(string)($_POST['amount_mode']??'fixed_per_award');
+            if(!in_array($amountMode,['fixed_per_award','flexible_within_total','equal_among_recipients','manual_rule'],true)){
+                throw new RuntimeException('Invalid amount rule.');
+            }
+
+            $stmt=$this->pdo->prepare(
+                'UPDATE scholarship_award_rules
+                 SET renewable=?,max_total_award_years=?,amount_mode=?,
+                     student_teaching_required=?,single_semester_allowed_if_graduating=?,
+                     manual_amount_rule_text=?,manual_distribution_rule_text=?
+                 WHERE intent_version_id=?'
+            );
+            $stmt->execute([
+                isset($_POST['renewable'])?1:0,
+                $this->nullableInt($_POST['max_total_award_years']??null),
+                $amountMode,
+                isset($_POST['student_teaching_required'])?1:0,
+                isset($_POST['single_semester_allowed_if_graduating'])?1:0,
+                $this->nullableText($_POST['manual_amount_rule_text']??null),
+                $this->nullableText($_POST['manual_distribution_rule_text']??null),
+                $intent['id'],
+            ]);
+
+            Flash::success('Scholarship award rules saved.');
+        }catch(\Throwable $e){
+            Flash::error($e->getMessage());
+        }
+
+        $this->redirect('/admin/scholarships/'.$id);
+    }
+
+    public function deleteCriterion(array $params): never
+    {
+        $this->requireAdmin();
+        $this->requirePost();
+        $id=(int)($params['id']??0);
+        $criterionId=(int)($params['criterion']??0);
+
+        try{
+            $intent=$this->currentIntent($id);
+            if($this->intentLocked((int)$intent['id'])){
+                throw new RuntimeException('This donor-intent version is already in use and cannot be modified.');
+            }
+
+            $stmt=$this->pdo->prepare(
+                'DELETE FROM scholarship_criteria WHERE id=? AND intent_version_id=?'
+            );
+            $stmt->execute([$criterionId,$intent['id']]);
+
+            Flash::success('Criterion removed.');
         }catch(\Throwable $e){
             Flash::error($e->getMessage());
         }
@@ -428,6 +500,28 @@ final class ScholarshipController extends BaseAdminController
         }
 
         $this->redirect('/admin/scholarships/'.$id);
+    }
+
+    private function rulesForm(int $id,array $scholarship): string
+    {
+        $selected = static fn(string $value,string $current): string => $value===$current?' selected':'';
+
+        return '<section class="card" style="margin-top:1rem"><h2>Award rules</h2>'
+            .'<form method="post" action="/admin/scholarships/'.$id.'/rules">'.View::csrfField()
+            .'<div class="form-grid">'
+            .'<div><label for="rules_amount_mode">Amount rule</label><select id="rules_amount_mode" name="amount_mode">'
+            .'<option value="fixed_per_award"'.$selected('fixed_per_award',(string)$scholarship['amount_mode']).'>Fixed per award</option>'
+            .'<option value="flexible_within_total"'.$selected('flexible_within_total',(string)$scholarship['amount_mode']).'>Flexible within annual total</option>'
+            .'<option value="equal_among_recipients"'.$selected('equal_among_recipients',(string)$scholarship['amount_mode']).'>Equal among recipients</option>'
+            .'<option value="manual_rule"'.$selected('manual_rule',(string)$scholarship['amount_mode']).'>Manual donor rule</option></select></div>'
+            .'<div><label><input type="checkbox" name="renewable" value="1"'.((int)$scholarship['renewable']===1?' checked':'').'> Renewable</label>'
+            .'<label for="rules_max_years">Maximum total award years</label><input id="rules_max_years" name="max_total_award_years" type="number" min="1" value="'.View::e($scholarship['max_total_award_years']??'').'"></div>'
+            .'<div><label><input type="checkbox" name="student_teaching_required" value="1"'.((int)$scholarship['student_teaching_required']===1?' checked':'').'> Student-teaching scholarship</label></div>'
+            .'<div><label><input type="checkbox" name="single_semester_allowed_if_graduating" value="1"'.((int)$scholarship['single_semester_allowed_if_graduating']===1?' checked':'').'> Allow single-semester distribution when graduating</label></div>'
+            .'</div>'
+            .'<label for="rules_amount_text">Manual amount rule</label><textarea id="rules_amount_text" name="manual_amount_rule_text">'.View::e($scholarship['manual_amount_rule_text']??'').'</textarea>'
+            .'<label for="rules_distribution_text">Manual distribution rule</label><textarea id="rules_distribution_text" name="manual_distribution_rule_text">'.View::e($scholarship['manual_distribution_rule_text']??'').'</textarea>'
+            .'<div class="form-actions"><button type="submit">Save award rules</button></div></form></section>';
     }
 
     private function criterionForm(int $id): string
