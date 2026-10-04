@@ -195,28 +195,60 @@ $router->get('/dashboard', static function () use ($auth, $pdo): string {
     $cycleStatus = $cycle ? View::status($cycle['status']) : View::status('setup');
     $token = View::csrfField();
 
-    $setupAction = $cycle
-        ? '<a class="button" href="/admin/cycles/' . $cycleId . '/setup">Continue cycle setup</a>'
-        : '<a class="button" href="/admin/cycles">Create academic cycle</a>';
+    $setupHref = $cycle
+        ? '/admin/cycles/' . $cycleId . '/setup'
+        : '/admin/cycles';
+    $setupLabel = $cycle ? 'Continue cycle setup' : 'Create academic cycle';
+
+    $renewalBadgeClass = $renewals === 0 ? 'count-badge clear' : 'count-badge';
+    $reviewBadgeClass = $reviewUnits === 0 ? 'count-badge clear' : 'count-badge';
+    $mappingBadgeClass = $unresolvedMappings === 0 ? 'count-badge clear' : 'count-badge';
 
     $body = Flash::render()
-        . '<div class="page-header"><div><h1>Scholarship Manager</h1><p><strong>' . $cycleLabel . '</strong> · ' . $cycleStatus . '</p></div>'
-        . '<form method="post" action="/logout">' . $token . '<button class="secondary" type="submit">Sign out</button></form></div>'
-        . '<div class="grid" aria-label="Current cycle summary">'
-        . '<section class="stat"><span>Scholarships</span><strong>' . $scholarships . '</strong></section>'
-        . '<section class="stat"><span>Renewals needing review</span><strong>' . $renewals . '</strong></section>'
-        . '<section class="stat"><span>Applicants</span><strong>' . $applicants . '</strong></section>'
-        . '<section class="stat"><span>Review units outstanding</span><strong>' . $reviewUnits . '</strong></section>'
-        . '<section class="stat"><span>Program mappings unresolved</span><strong>' . $unresolvedMappings . '</strong></section>'
+        . '<div class="page-header">'
+        . '<div><div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>' . $cycleLabel . ' academic cycle · ' . $cycleStatus . '</div>'
+        . '<h1>Scholarship Manager</h1>'
+        . '<p>Manage the scholarship cycle from planning through review, awarding, and notification.</p></div>'
+        . '<div class="actions"><a class="button" href="' . $setupHref . '">' . View::icon('arrow') . $setupLabel . '</a></div>'
         . '</div>'
-        . '<section class="card" style="margin-top:1rem"><h2>Current workflow</h2><div class="actions">'
-        . $setupAction
-        . '<a class="button secondary" href="/admin/planning">Annual planning</a>'
-        . '<a class="button secondary" href="/admin/renewals">Renewals</a>'
-        . '<a class="button secondary" href="/admin/allocations">Allocations</a>'
-        . '<a class="button secondary" href="/admin/applicants">Applicants</a>'
-        . '<a class="button secondary" href="/review">Program review</a>'
-        . '</div></section>';
+
+        . '<div class="metric-grid" aria-label="Current cycle summary">'
+        . '<section class="metric-card"><div class="metric-icon">' . View::icon('award') . '</div><div><span class="metric-label">Scholarships</span><strong class="metric-value">' . $scholarships . '</strong><span class="metric-meta">Active in this cycle</span></div></section>'
+        . '<section class="metric-card"><div class="metric-icon">' . View::icon('applicant') . '</div><div><span class="metric-label">Applicants</span><strong class="metric-value">' . $applicants . '</strong><span class="metric-meta">Active applications</span></div></section>'
+        . '<section class="metric-card"><div class="metric-icon">' . View::icon('renew') . '</div><div><span class="metric-label">Renewals to review</span><strong class="metric-value">' . $renewals . '</strong><span class="metric-meta">Pending, review, or hold</span></div></section>'
+        . '<section class="metric-card"><div class="metric-icon">' . View::icon('review') . '</div><div><span class="metric-label">Review units</span><strong class="metric-value">' . $reviewUnits . '</strong><span class="metric-meta">Still outstanding</span></div></section>'
+        . '</div>'
+
+        . '<div class="dashboard-layout">'
+        . '<section class="module" aria-labelledby="workflow-title">'
+        . '<div class="module-header"><div><h2 id="workflow-title">Cycle workflow</h2><p>Move through the core work for ' . $cycleLabel . '.</p></div><a class="module-link" href="/admin/cycles">Manage cycle →</a></div>'
+        . '<div class="workflow-grid">'
+        . '<a class="workflow-step primary" href="' . $setupHref . '"><span class="step-number">01</span><span><strong>Cycle setup</strong><span>Dates, terms, configuration, and rollover.</span></span></a>'
+        . '<a class="workflow-step" href="/admin/planning"><span class="step-number">02</span><span><strong>Annual planning</strong><span>Prepare funds, programs, and award strategy.</span></span></a>'
+        . '<a class="workflow-step" href="/admin/renewals"><span class="step-number">03</span><span><strong>Renewals</strong><span>Review continuing recipients and amounts.</span></span></a>'
+        . '<a class="workflow-step" href="/admin/allocations"><span class="step-number">04</span><span><strong>Allocations</strong><span>Assign scholarship capacity and funding.</span></span></a>'
+        . '<a class="workflow-step" href="/admin/applicants"><span class="step-number">05</span><span><strong>Applicants</strong><span>Import, map, and prepare candidate records.</span></span></a>'
+        . '<a class="workflow-step" href="/review"><span class="step-number">06</span><span><strong>Program review</strong><span>Complete program-level scholarship review.</span></span></a>'
+        . '</div></section>'
+
+        . '<div class="dashboard-stack">'
+        . '<section class="module" aria-labelledby="attention-title">'
+        . '<div class="module-header"><div><h2 id="attention-title">Needs attention</h2><p>Items that may block the cycle.</p></div></div>'
+        . '<div class="attention-list">'
+        . '<a class="attention-item" href="/admin/renewals"><span class="attention-icon">' . View::icon('renew') . '</span><span class="attention-copy"><strong>Renewals</strong><span>Awaiting review or decision</span></span><span class="' . $renewalBadgeClass . '">' . $renewals . '</span></a>'
+        . '<a class="attention-item" href="/review"><span class="attention-icon">' . View::icon('review') . '</span><span class="attention-copy"><strong>Program review</strong><span>Outstanding review units</span></span><span class="' . $reviewBadgeClass . '">' . $reviewUnits . '</span></a>'
+        . '<a class="attention-item" href="/admin/organization"><span class="attention-icon">' . View::icon('program') . '</span><span class="attention-copy"><strong>Program mappings</strong><span>Unresolved program data</span></span><span class="' . $mappingBadgeClass . '">' . $unresolvedMappings . '</span></a>'
+        . '</div></section>'
+
+        . '<section class="module" aria-labelledby="quick-title">'
+        . '<div class="module-header"><div><h2 id="quick-title">Quick access</h2><p>Common administrative tools.</p></div></div>'
+        . '<div class="quick-links">'
+        . '<a class="quick-link" href="/admin/scholarships">' . View::icon('award') . '<span>Scholarships</span></a>'
+        . '<a class="quick-link" href="/admin/cycle-report">' . View::icon('report') . '<span>Cycle report</span></a>'
+        . '<a class="quick-link" href="/admin/organization">' . View::icon('program') . '<span>Programs</span></a>'
+        . '<a class="quick-link" href="/admin/users">' . View::icon('users') . '<span>Users</span></a>'
+        . '</div></section>'
+        . '</div></div>';
 
     return View::layout(
         'Dashboard',
