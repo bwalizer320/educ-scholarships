@@ -1,0 +1,34 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use App\Database\Connection;
+use App\Database\Migrator;
+
+$root = require dirname(__DIR__) . '/app/bootstrap.php';
+
+$command = $argv[1] ?? 'help';
+
+switch ($command) {
+    case 'migrate':
+        $migrator = new Migrator(Connection::get(), $root . '/database/migrations');
+        $ran = $migrator->migrate();
+
+        if ($ran === []) {
+            fwrite(STDOUT, "No pending migrations.\n");
+            exit(0);
+        }
+
+        foreach ($ran as $migration) {
+            fwrite(STDOUT, "Applied {$migration}\n");
+        }
+        break;
+
+    case 'help':
+    default:
+        fwrite(STDOUT, "Scholarship Manager console\n\n");
+        fwrite(STDOUT, "Commands:\n");
+        fwrite(STDOUT, "  migrate   Apply pending SQL migrations\n");
+        break;
+}
