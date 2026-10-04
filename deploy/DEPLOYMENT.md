@@ -6,7 +6,7 @@ These instructions deploy the application for **testing with local authenticatio
 
 - Ubuntu/Debian
 - Nginx
-- PHP 8.5 FPM with `pdo_mysql`, `mbstring`, `dom`, `zip`, and `fileinfo`
+- PHP 8.3+ FPM with `pdo_mysql`, `mbstring`, `dom`, `zip`, and `fileinfo`
 - MariaDB 10.11+
 - Composer
 - Git
@@ -156,5 +156,5 @@ cd /var/www/educ-scholarships
 git pull --ff-only origin main
 composer install --no-dev --optimize-autoloader --no-interaction
 php bin/console migrate
-sudo systemctl reload php8.5-fpm
+sudo systemctl reload php8.3-fpm
 ```
