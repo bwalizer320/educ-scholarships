@@ -54,6 +54,13 @@ final class View
             ? '<span class="cycle-pill">' . self::e($cycleLabel) . '</span>'
             : '';
 
+        $logoutHtml = $userName
+            ? '<form method="post" action="/logout">' . self::csrfField()
+                . '<button class="header-logout" type="submit" title="Sign out">'
+                . self::icon('logout')
+                . '<span class="sr-only">Sign out</span></button></form>'
+            : '';
+
         $nav = $userName ? self::nav($role) : '';
         $shellClass = $userName ? 'app-shell' : 'app-shell public-shell';
 
@@ -66,134 +73,194 @@ final class View
     <title>{$safeTitle} | Scholarship Manager</title>
     <style>
         :root {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #151515;
-            background: #f6f7f9;
+            font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #17191c;
+            background: #f5f6f8;
             --iowa-gold: #ffcd00;
-            --ink: #111111;
-            --text: #202124;
-            --muted: #646a73;
-            --border: #e2e5e9;
-            --border-strong: #c9ced6;
+            --ink: #111214;
+            --text: #24272c;
+            --muted: #69707a;
+            --subtle: #8b929c;
+            --border: #e1e4e8;
+            --border-strong: #c8cdd4;
             --focus: #005ea8;
             --surface: #ffffff;
             --surface-soft: #f8f9fb;
-            --sidebar-hover: #f1f3f5;
-            --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04);
-            --shadow-md: 0 4px 14px rgba(16, 24, 40, .06);
-            --radius-sm: .5rem;
-            --radius-md: .75rem;
+            --surface-warm: #fff9df;
+            --sidebar: #111214;
+            --sidebar-hover: #1d2024;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .03);
+            --shadow-md: 0 8px 24px rgba(16, 24, 40, .08);
+            --radius-sm: .55rem;
+            --radius-md: .8rem;
             --radius-lg: 1rem;
         }
+
         * { box-sizing: border-box; }
-        html { background: #f6f7f9; }
-        body { margin: 0; line-height: 1.5; color: var(--text); background: #f6f7f9; font-size: 1rem; }
-        h1, h2, h3 { color: var(--ink); letter-spacing: -.02em; }
-        h1 { font-size: clamp(1.75rem, 2vw, 2.15rem); line-height: 1.15; }
-        h2 { font-size: 1.25rem; }
-        .skip { position: absolute; left: -9999px; top: 0; background: #fff; color: #000; padding: .75rem 1rem; z-index: 50; border-radius: .5rem; }
+        html { background: #f5f6f8; }
+        body { margin: 0; color: var(--text); background: #f5f6f8; font-size: .95rem; line-height: 1.5; }
+        h1, h2, h3 { color: var(--ink); letter-spacing: -.025em; }
+        h1 { font-size: clamp(1.8rem, 2.1vw, 2.35rem); line-height: 1.08; }
+        h2 { font-size: 1.15rem; }
+        h3 { font-size: 1rem; }
+        a { color: #005ea8; }
+
+        .skip { position: absolute; left: -9999px; top: 0; background: #fff; color: #000; padding: .75rem 1rem; z-index: 100; border-radius: .5rem; }
         .skip:focus { left: .75rem; top: .75rem; }
 
-        header { background: #050505; color: #fff; border-bottom: 4px solid var(--iowa-gold); }
-        .header-inner { width: 100%; margin: 0; padding: .78rem 1.65rem; display: flex; gap: 1rem; align-items: center; justify-content: space-between; min-height: 60px; }
-        .brand { font-weight: 700; display: flex; align-items: center; gap: .75rem; font-size: .96rem; white-space: nowrap; }
-        .brand .iowa { color: var(--iowa-gold); letter-spacing: .075em; margin-right: 0; font-weight: 800; }
-        .header-meta { display: flex; gap: 1rem; align-items: center; }
-        .user-block { display: flex; flex-direction: column; text-align: right; font-size: .82rem; line-height: 1.25; }
+        header { height: 60px; background: #050505; color: #fff; border-bottom: 3px solid var(--iowa-gold); position: sticky; top: 0; z-index: 30; }
+        .header-inner { height: 100%; width: 100%; margin: 0; padding: 0 1.15rem; display: flex; gap: 1rem; align-items: center; justify-content: space-between; }
+        .brand { display: flex; align-items: center; gap: .7rem; min-width: 0; font-size: .92rem; font-weight: 720; white-space: nowrap; }
+        .brand .iowa { color: var(--iowa-gold); letter-spacing: .08em; font-weight: 850; }
+        .brand-divider { width: 1px; height: 20px; background: #3e4146; }
+        .brand-product { color: #fff; overflow: hidden; text-overflow: ellipsis; }
+        .header-meta { display: flex; gap: .75rem; align-items: center; }
+        .user-block { display: flex; flex-direction: column; text-align: right; font-size: .79rem; line-height: 1.18; }
         .user-block strong { font-weight: 700; }
-        .user-block span { color: #cfd2d6; font-size: .76rem; margin-top: .1rem; }
-        .cycle-pill { border: 1px solid #52555a; background: #111; border-radius: 999px; padding: .24rem .65rem; font-size: .76rem; font-weight: 700; color: #fff; }
+        .user-block span { color: #b8bec6; font-size: .7rem; margin-top: .1rem; }
+        .cycle-pill { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid #484c52; background: #15171a; border-radius: 999px; padding: .25rem .58rem; font-size: .72rem; font-weight: 750; color: #fff; }
+        .cycle-pill::before { content: ""; width: .42rem; height: .42rem; border-radius: 50%; background: var(--iowa-gold); }
+        .header-logout { width: 2.15rem; height: 2.15rem; min-height: 0; padding: 0; border-radius: .6rem; border: 1px solid #41454b; background: #15171a; color: #fff; box-shadow: none; }
+        .header-logout:hover { background: #24272b; border-color: #5a5f66; }
+        .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 
-        .app-shell { width: 100%; margin: 0; display: grid; grid-template-columns: 16.75rem minmax(0, 1fr); min-height: calc(100vh - 64px); align-items: start; }
+        .app-shell { width: 100%; margin: 0; display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); min-height: calc(100vh - 60px); }
         .app-shell.public-shell { grid-template-columns: 1fr; max-width: 52rem; margin: 0 auto; min-height: auto; }
 
-        nav { background: #fff; border-right: 1px solid var(--border); padding: 1rem .8rem 2rem; position: sticky; top: 0; height: calc(100vh - 64px); overflow-y: auto; scrollbar-width: thin; }
-        .nav-section { margin: 0 0 1.15rem; }
+        nav { background: var(--sidebar); border-right: 1px solid #22252a; padding: .85rem .65rem 1.25rem; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3b3f45 transparent; }
+        .nav-section { margin: 0 0 .85rem; }
         .nav-section:last-child { margin-bottom: 0; }
-        .nav-section-label { display: block; margin: 0 .7rem .35rem; color: #8a9099; font-size: .68rem; line-height: 1.2; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-        nav a { position: relative; display: flex; align-items: center; min-height: 2.35rem; padding: .5rem .7rem; margin: .1rem 0; border-radius: .55rem; color: #333840; text-decoration: none; font-weight: 600; font-size: .9rem; transition: background .12s ease, color .12s ease, transform .12s ease; }
-        nav a:hover { background: var(--sidebar-hover); color: #111; }
-        nav a[aria-current="page"] { background: #fff8db; color: #111; font-weight: 750; }
-        nav a[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: .42rem; bottom: .42rem; width: 3px; border-radius: 999px; background: var(--iowa-gold); }
+        .nav-section-label { display: block; margin: 0 .7rem .28rem; color: #747b85; font-size: .61rem; line-height: 1.2; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+        nav a { position: relative; display: flex; align-items: center; gap: .62rem; min-height: 2.12rem; padding: .42rem .62rem; margin: .08rem 0; border-radius: .55rem; color: #c9ced5; text-decoration: none; font-weight: 600; font-size: .82rem; transition: background .12s ease, color .12s ease; }
+        nav a:hover { background: var(--sidebar-hover); color: #fff; }
+        nav a[aria-current="page"] { background: #272a2f; color: #fff; box-shadow: inset 3px 0 0 var(--iowa-gold); }
+        .nav-icon { width: 1rem; height: 1rem; flex: 0 0 1rem; color: #8f969f; }
+        nav a:hover .nav-icon, nav a[aria-current="page"] .nav-icon { color: var(--iowa-gold); }
+        .nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
-        main { padding: 2rem 2.25rem 3rem; min-width: 0; background: #f6f7f9; }
-        .page-header { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; margin-bottom: 1.35rem; }
+        main { min-width: 0; background: #f5f6f8; padding: 1.75rem 2rem 3rem; }
+        main > * { max-width: 92rem; }
+        .page-header { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; margin-bottom: 1.2rem; }
         .page-header h1 { margin: 0; }
         .page-header p { margin: .35rem 0 0; color: var(--muted); }
+        .eyebrow { display: flex; align-items: center; gap: .45rem; color: var(--muted); font-size: .78rem; font-weight: 750; margin-bottom: .45rem; }
+        .eyebrow-dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--iowa-gold); }
 
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.35rem; box-shadow: var(--shadow-sm); }
-        .card h2:first-child, .card h3:first-child { margin-top: 0; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: .9rem; }
-        .stat { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.05rem 1.1rem; box-shadow: var(--shadow-sm); min-height: 7.4rem; display: flex; flex-direction: column; justify-content: space-between; }
-        .stat strong { display: block; font-size: 1.75rem; line-height: 1; color: #111; letter-spacing: -.025em; }
-        .stat span { color: var(--muted); font-size: .9rem; max-width: 12rem; }
+        .card, .module { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-sm); }
+        .card h2:first-child, .card h3:first-child, .module h2:first-child, .module h3:first-child { margin-top: 0; }
+        .module-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+        .module-header h2 { margin: 0; }
+        .module-header p { margin: .25rem 0 0; color: var(--muted); font-size: .86rem; }
+        .module-link { font-size: .82rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 
-        .actions { display: flex; gap: .55rem; flex-wrap: wrap; align-items: center; }
+        .grid, .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr)); gap: .8rem; }
+        .stat, .metric-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm); min-height: 7.2rem; }
+        .metric-card { display: grid; grid-template-columns: auto 1fr; gap: .85rem; align-items: start; }
+        .metric-icon { width: 2.25rem; height: 2.25rem; border-radius: .7rem; background: #f2f3f5; display: grid; place-items: center; color: #34383e; }
+        .metric-icon svg { width: 1.08rem; height: 1.08rem; }
+        .metric-label { display: block; color: var(--muted); font-size: .78rem; font-weight: 650; }
+        .metric-value { display: block; margin-top: .22rem; color: #111; font-size: 1.75rem; line-height: 1; font-weight: 780; letter-spacing: -.035em; }
+        .metric-meta { display: block; margin-top: .5rem; color: var(--subtle); font-size: .72rem; }
+
+        .dashboard-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(18rem, .75fr); gap: .9rem; margin-top: .9rem; align-items: start; }
+        .dashboard-stack { display: grid; gap: .9rem; }
+        .workflow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+        .workflow-step { display: flex; gap: .72rem; align-items: flex-start; padding: .85rem; border: 1px solid var(--border); border-radius: .75rem; background: #fff; text-decoration: none; color: var(--text); min-height: 5.1rem; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+        .workflow-step:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); border-color: #c9ced6; color: var(--text); }
+        .step-number { width: 1.75rem; height: 1.75rem; flex: 0 0 1.75rem; border-radius: .55rem; display: grid; place-items: center; background: #111; color: var(--iowa-gold); font-size: .72rem; font-weight: 800; }
+        .workflow-step strong { display: block; font-size: .86rem; color: #17191c; }
+        .workflow-step span:last-child { display: block; margin-top: .18rem; color: var(--muted); font-size: .72rem; line-height: 1.35; }
+        .workflow-step.primary { background: var(--surface-warm); border-color: #ead781; }
+        .workflow-step.primary .step-number { background: var(--iowa-gold); color: #111; }
+
+        .attention-list { display: grid; gap: .55rem; }
+        .attention-item { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: center; padding: .72rem; border: 1px solid var(--border); border-radius: .7rem; text-decoration: none; color: var(--text); background: #fff; }
+        .attention-item:hover { border-color: #c8cdd4; background: #fafbfc; color: var(--text); }
+        .attention-icon { width: 2rem; height: 2rem; border-radius: .6rem; display: grid; place-items: center; background: #f2f3f5; color: #41464d; }
+        .attention-icon svg { width: 1rem; height: 1rem; }
+        .attention-copy strong { display: block; font-size: .82rem; color: #202328; }
+        .attention-copy span { display: block; color: var(--muted); font-size: .7rem; margin-top: .08rem; }
+        .count-badge { min-width: 1.7rem; height: 1.7rem; padding: 0 .38rem; border-radius: 999px; display: inline-grid; place-items: center; background: #111; color: #fff; font-size: .72rem; font-weight: 800; }
+        .count-badge.clear { background: #edf6ef; color: #176033; }
+
+        .quick-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+        .quick-link { display: flex; align-items: center; gap: .55rem; min-height: 2.65rem; padding: .65rem .72rem; border: 1px solid var(--border); border-radius: .65rem; background: #fff; color: #262a30; text-decoration: none; font-size: .8rem; font-weight: 700; }
+        .quick-link:hover { background: #f8f9fa; border-color: #c9ced6; color: #111; }
+        .quick-link svg { width: 1rem; height: 1rem; color: #666d76; }
+
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
         .actions form { margin: 0; }
-        button, .button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.55rem; padding: .56rem .9rem; background: #111; color: #fff; border: 1px solid #111; border-radius: .55rem; font-weight: 700; text-decoration: none; cursor: pointer; font: inherit; font-size: .92rem; line-height: 1.2; box-shadow: 0 1px 1px rgba(0,0,0,.04); transition: background .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease; }
+        button, .button { display: inline-flex; align-items: center; justify-content: center; gap: .42rem; min-height: 2.42rem; padding: .52rem .82rem; background: #111; color: #fff; border: 1px solid #111; border-radius: .58rem; font-weight: 720; text-decoration: none; cursor: pointer; font: inherit; font-size: .84rem; line-height: 1.2; box-shadow: 0 1px 1px rgba(0,0,0,.04); transition: background .12s ease, border-color .12s ease, box-shadow .12s ease; }
         button.secondary, .button.secondary { background: #fff; color: #25282d; border-color: var(--border-strong); }
-        button.small, .button.small { min-height: 2rem; padding: .35rem .6rem; font-size: .85rem; }
+        button.small, .button.small { min-height: 2rem; padding: .35rem .6rem; font-size: .78rem; }
         button:hover, .button:hover { background: #2a2a2a; border-color: #2a2a2a; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.10); }
         button.secondary:hover, .button.secondary:hover { background: #f4f5f6; color: #111; border-color: #aeb4bd; }
 
-        label { display: block; font-weight: 700; margin: .85rem 0 .3rem; color: #262a30; font-size: .9rem; }
-        input, select, textarea { width: 100%; padding: .65rem .72rem; border: 1px solid #aeb4bd; border-radius: .5rem; font: inherit; background: #fff; color: #181a1f; min-height: 2.55rem; }
+        label { display: block; font-weight: 700; margin: .8rem 0 .28rem; color: #262a30; font-size: .84rem; }
+        input, select, textarea { width: 100%; padding: .62rem .7rem; border: 1px solid #aeb4bd; border-radius: .52rem; font: inherit; background: #fff; color: #181a1f; min-height: 2.45rem; }
         input[type="checkbox"], input[type="radio"] { width: auto; min-height: auto; }
         textarea { min-height: 7rem; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem 1rem; }
         .form-actions { margin-top: 1rem; }
 
         table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td { padding: .75rem .75rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-        th { background: #fafbfc; font-size: .78rem; color: #59606a; text-transform: uppercase; letter-spacing: .035em; font-weight: 800; }
+        th, td { padding: .72rem .72rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+        th { background: #fafbfc; font-size: .7rem; color: #59606a; text-transform: uppercase; letter-spacing: .055em; font-weight: 800; }
         tbody tr:hover { background: #fbfcfd; }
         td.num, th.num { text-align: right; white-space: nowrap; }
         .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-sm); }
 
-        .status { display: inline-flex; align-items: center; border-radius: 999px; padding: .18rem .58rem; font-size: .77rem; font-weight: 750; line-height: 1.35; }
+        .status { display: inline-flex; align-items: center; border-radius: 999px; padding: .18rem .52rem; font-size: .71rem; font-weight: 760; line-height: 1.35; }
         .status-success { background: #e8f5ec; color: #175c2e; }
         .status-danger { background: #fdeaea; color: #8a1717; }
         .status-warning { background: #fff4d6; color: #705200; }
         .status-neutral { background: #eff1f3; color: #4a4f57; }
 
-        .notice { border: 1px solid #bdd9f0; border-left: 4px solid #005ea8; border-radius: .55rem; background: #f2f8fd; padding: .85rem 1rem; margin-bottom: 1rem; }
-        .error { border: 1px solid #efc0c0; border-left: 4px solid #b50909; border-radius: .55rem; background: #fff4f4; padding: .85rem 1rem; margin-bottom: 1rem; }
-        .success-box { border: 1px solid #bee0c7; border-left: 4px solid #2e8540; border-radius: .55rem; background: #f0f9f2; padding: .85rem 1rem; margin-bottom: 1rem; }
+        .notice { border: 1px solid #bdd9f0; border-left: 4px solid #005ea8; border-radius: .55rem; background: #f2f8fd; padding: .8rem .95rem; margin-bottom: 1rem; }
+        .error { border: 1px solid #efc0c0; border-left: 4px solid #b50909; border-radius: .55rem; background: #fff4f4; padding: .8rem .95rem; margin-bottom: 1rem; }
+        .success-box { border: 1px solid #bee0c7; border-left: 4px solid #2e8540; border-radius: .55rem; background: #f0f9f2; padding: .8rem .95rem; margin-bottom: 1rem; }
         .muted { color: var(--muted); }
-        .checklist { display: grid; gap: .7rem; }
-        .check-item { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; background: #fff; }
+        .checklist { display: grid; gap: .65rem; }
+        .check-item { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: #fff; }
         .criteria { margin: 0; padding-left: 1.25rem; }
-        details { border: 1px solid var(--border); border-radius: .6rem; padding: .65rem .8rem; background: #fff; }
+        details { border: 1px solid var(--border); border-radius: .6rem; padding: .62rem .76rem; background: #fff; }
         summary { cursor: pointer; font-weight: 700; }
-        a { color: #005ea8; }
+
         a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-        @media (max-width: 980px) {
-            .app-shell { grid-template-columns: 13.75rem minmax(0, 1fr); }
-            main { padding: 1.5rem; }
-            nav a { font-size: .86rem; }
+        @media (max-width: 1120px) {
+            .dashboard-layout { grid-template-columns: 1fr; }
+            .workflow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-        @media (max-width: 760px) {
-            .header-inner { padding: .72rem 1rem; }
-            .brand { white-space: normal; line-height: 1.2; }
-            .brand .iowa { display: none; }
-            .header-meta { display: none; }
+        @media (max-width: 900px) {
+            .app-shell { grid-template-columns: 11.75rem minmax(0, 1fr); }
+            main { padding: 1.35rem; }
+            nav a { font-size: .78rem; }
+        }
+        @media (max-width: 720px) {
+            header { position: static; }
+            .header-inner { padding: 0 .85rem; }
+            .brand-product { max-width: 16rem; }
+            .brand .iowa, .brand-divider { display: none; }
+            .cycle-pill, .user-block { display: none; }
             .app-shell { grid-template-columns: 1fr; min-height: auto; }
-            nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); display: flex; gap: .25rem; overflow-x: auto; padding: .7rem .75rem; }
-            .nav-section { display: flex; gap: .25rem; margin: 0; flex: 0 0 auto; }
+            nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid #22252a; display: flex; gap: .2rem; overflow-x: auto; padding: .55rem .65rem; }
+            .nav-section { display: flex; gap: .2rem; margin: 0; flex: 0 0 auto; }
             .nav-section-label { display: none; }
-            nav a { white-space: nowrap; margin: 0; min-height: 2.2rem; }
-            nav a[aria-current="page"]::before { display: none; }
-            main { padding: 1.15rem; }
+            nav a { white-space: nowrap; margin: 0; min-height: 2.2rem; padding: .48rem .6rem; }
+            nav a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--iowa-gold); }
+            main { padding: 1rem; }
             .page-header { flex-direction: column; margin-bottom: 1rem; }
-            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .stat { min-height: 6.8rem; }
+            .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .workflow-grid { grid-template-columns: 1fr; }
+            .quick-links { grid-template-columns: 1fr; }
         }
         @media (max-width: 480px) {
-            .grid { grid-template-columns: 1fr; }
+            .metric-grid { grid-template-columns: 1fr; }
             .actions { align-items: stretch; }
             .actions > a, .actions > button, .actions > form { width: 100%; }
             .actions form button { width: 100%; }
+            .brand-product { max-width: 12rem; }
         }
     </style>
 </head>
@@ -201,8 +268,8 @@ final class View
 <a class="skip" href="#main">Skip to main content</a>
 <header>
     <div class="header-inner">
-        <div class="brand"><span class="iowa">IOWA</span> College of Education Scholarship Manager</div>
-        <div class="header-meta">{$cycleHtml}{$userHtml}</div>
+        <div class="brand"><span class="iowa">IOWA</span><span class="brand-divider" aria-hidden="true"></span><span class="brand-product">College of Education · Scholarships</span></div>
+        <div class="header-meta">{$cycleHtml}{$userHtml}{$logoutHtml}</div>
     </div>
 </header>
 <div class="{$shellClass}">
@@ -214,97 +281,132 @@ final class View
 HTML;
     }
 
+    public static function icon(string $name, string $class = ''): string
+    {
+        $paths = match ($name) {
+            'dashboard' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+            'calendar' => '<path d="M6 2v4M18 2v4M3 9h18"/><rect x="3" y="4" width="18" height="17" rx="2"/>',
+            'report' => '<path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5M9 13h6M9 17h6"/>',
+            'history' => '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+            'planning' => '<path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/><path d="M8 7h8M8 11h8M8 15h5M3 21h18"/>',
+            'award' => '<circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/>',
+            'renew' => '<path d="M20 7h-5V2M4 17h5v5"/><path d="M18.5 5.5A8 8 0 0 0 5 7M5.5 18.5A8 8 0 0 0 19 17"/>',
+            'allocation' => '<path d="M12 3v18M3 8h18M5 8v4a3 3 0 0 0 6 0V8M13 8v4a3 3 0 0 0 6 0V8"/>',
+            'users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+            'applicant' => '<circle cx="9" cy="8" r="4"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M19 8v6M16 11h6"/>',
+            'enrollment' => '<path d="m3 10 9-5 9 5-9 5z"/><path d="M7 12.5V17c2.8 2 7.2 2 10 0v-4.5M21 10v6"/>',
+            'review' => '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+            'rubric' => '<path d="M9 5h10M9 12h10M9 19h10"/><path d="m3 5 1 1 2-2M3 12l1 1 2-2M3 19l1 1 2-2"/>',
+            'dean' => '<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>',
+            'verify' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+            'mail' => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+            'template' => '<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/>',
+            'program' => '<path d="M4 21V4h7v17M13 21V9h7v12M2 21h20"/>',
+            'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06-2.83 2.83-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21h-4v-.17a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06-2.83-2.83.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3v-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06 2.83-2.83.06.06A1.65 1.65 0 0 0 8.92 4a1.65 1.65 0 0 0 1-1.51V2h4v.49A1.65 1.65 0 0 0 14.92 4a1.65 1.65 0 0 0 1.82-.33l.06-.06 2.83 2.83-.06.06A1.65 1.65 0 0 0 19.4 9c.12.61.61 1.1 1.22 1.22H21v4h-.38A1.65 1.65 0 0 0 19.4 15z"/>',
+            'logout' => '<path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/>',
+            'arrow' => '<path d="M5 12h14M13 6l6 6-6 6"/>',
+            default => '<circle cx="12" cy="12" r="8"/>',
+        };
+
+        $classAttr = $class !== '' ? ' class="' . self::e($class) . '"' : '';
+
+        return '<svg' . $classAttr . ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $paths . '</svg>';
+    }
+
     private static function nav(?string $role): string
     {
         if ($role === 'student') {
             return '<nav aria-label="Recipient navigation">'
                 . self::navGroup('Awards', [
-                    ['/portal', 'My Awards'],
+                    ['/portal', 'My Awards', 'award'],
                 ])
                 . '</nav>';
         }
 
         if (in_array($role, ['program_coordinator', 'department_chair'], true)) {
             return '<nav aria-label="Primary">'
-                . self::navGroup('Overview', [
-                    ['/dashboard', 'Dashboard'],
-                ])
-                . self::navGroup('Review', [
-                    ['/review', 'Program Review'],
-                    ['/thank-yous/review', 'Thank-you Review'],
+                . self::navGroup('Workspace', [
+                    ['/dashboard', 'Dashboard', 'dashboard'],
+                    ['/review', 'Program Review', 'review'],
+                    ['/thank-yous/review', 'Thank-you Review', 'mail'],
                 ])
                 . '</nav>';
         }
 
         $testMail = (Env::get('APP_ENV', 'development') ?? 'development') !== 'production'
-            ? [['/admin/test-mail', 'Testing Mail']]
+            ? [['/admin/test-mail', 'Testing Mail', 'settings']]
             : [];
 
         return '<nav aria-label="Primary">'
-            . self::navGroup('Overview', [
-                ['/dashboard', 'Dashboard'],
+            . self::navGroup('Workspace', [
+                ['/dashboard', 'Dashboard', 'dashboard'],
             ])
             . self::navGroup('Cycle', [
-                ['/admin/cycles', 'Cycles'],
-                ['/admin/cycle-report', 'Cycle Report'],
-                ['/admin/planning', 'Annual Planning'],
-                ['/admin/history-imports', 'History Import'],
+                ['/admin/cycles', 'Cycles', 'calendar'],
+                ['/admin/planning', 'Planning', 'planning'],
+                ['/admin/cycle-report', 'Cycle Report', 'report'],
+                ['/admin/history-imports', 'History Import', 'history'],
             ])
-            . self::navGroup('Scholarships', [
-                ['/admin/scholarships', 'Scholarships'],
-                ['/admin/renewals', 'Renewals'],
-                ['/admin/allocations', 'Allocations'],
-                ['/admin/applicants', 'Applicants'],
-                ['/admin/enrollment', 'Enrollment'],
+            . self::navGroup('Awards', [
+                ['/admin/scholarships', 'Scholarships', 'award'],
+                ['/admin/renewals', 'Renewals', 'renew'],
+                ['/admin/allocations', 'Allocations', 'allocation'],
+                ['/admin/applicants', 'Applicants', 'applicant'],
+                ['/admin/enrollment', 'Enrollment', 'enrollment'],
             ])
             . self::navGroup('Review', [
-                ['/review', 'Program Review'],
-                ['/admin/reviewers', 'Reviewers'],
-                ['/admin/rubrics', 'Rubrics'],
-                ['/dean/recommendations', 'Dean Review'],
-                ['/dean/reallocation', 'Reallocation'],
-                ['/dean/verification', 'Verification'],
+                ['/review', 'Program Review', 'review'],
+                ['/admin/reviewers', 'Reviewers', 'users'],
+                ['/admin/rubrics', 'Rubrics', 'rubric'],
+                ['/dean/recommendations', 'Dean Review', 'dean'],
+                ['/dean/reallocation', 'Reallocation', 'allocation'],
+                ['/dean/verification', 'Verification', 'verify'],
             ])
             . self::navGroup('Recipients', [
-                ['/admin/distribution-requests', 'Distribution Requests'],
-                ['/admin/thank-yous', 'Thank-you Letters'],
-                ['/admin/thank-you-reminders', 'Thank-you Reminders'],
-                ['/thank-yous/review', 'Thank-you Review'],
-                ['/admin/thank-you-reviewers', 'Thank-you Reviewers'],
+                ['/admin/distribution-requests', 'Distribution', 'allocation'],
+                ['/admin/thank-yous', 'Thank-you Letters', 'mail'],
+                ['/admin/thank-you-reminders', 'Reminders', 'renew'],
+                ['/thank-yous/review', 'Thank-you Review', 'review'],
+                ['/admin/thank-you-reviewers', 'Thank-you Reviewers', 'users'],
             ])
-            . self::navGroup('Communications', [
-                ['/notifications/ready', 'Notify'],
-                ['/notifications/history', 'Notification History'],
-                ['/admin/templates', 'Templates'],
+            . self::navGroup('Comms', [
+                ['/notifications/ready', 'Notify', 'mail'],
+                ['/notifications/history', 'Notification History', 'history'],
+                ['/admin/templates', 'Templates', 'template'],
             ])
-            . self::navGroup('Administration', array_merge([
-                ['/admin/organization', 'Programs'],
-                ['/admin/users', 'Users'],
+            . self::navGroup('Admin', array_merge([
+                ['/admin/organization', 'Programs', 'program'],
+                ['/admin/users', 'Users', 'users'],
             ], $testMail))
             . '</nav>';
     }
 
     /**
-     * @param array<int, array{0:string,1:string}> $items
+     * @param array<int, array{0:string,1:string,2?:string}> $items
      */
     private static function navGroup(string $label, array $items): string
     {
         $html = '<div class="nav-section"><span class="nav-section-label">' . self::e($label) . '</span>';
 
-        foreach ($items as [$href, $text]) {
-            $html .= self::navItem($href, $text);
+        foreach ($items as $item) {
+            [$href, $text] = $item;
+            $icon = $item[2] ?? 'dashboard';
+            $html .= self::navItem($href, $text, $icon);
         }
 
         return $html . '</div>';
     }
 
-    private static function navItem(string $href, string $label): string
+    private static function navItem(string $href, string $label, string $icon): string
     {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         $base = rtrim($href, '/');
         $active = $path === $href || ($base !== '' && str_starts_with($path, $base . '/'));
         $current = $active ? ' aria-current="page"' : '';
 
-        return '<a href="' . self::e($href) . '"' . $current . '>' . self::e($label) . '</a>';
+        return '<a href="' . self::e($href) . '"' . $current . '>'
+            . self::icon($icon, 'nav-icon')
+            . '<span class="nav-label">' . self::e($label) . '</span>'
+            . '</a>';
     }
 }
