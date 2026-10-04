@@ -1,6 +1,7 @@
 {
   "name": "uiowa-coe/educ-scholarships",
   "description": "University of Iowa College of Education Scholarship Manager",
+  "license": "proprietary",
   "type": "project",
   "require": {
     "php": "^8.5",
