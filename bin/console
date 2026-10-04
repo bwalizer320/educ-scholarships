@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+use App\Database\BaseSeeder;
 use App\Database\Connection;
 use App\Database\Migrator;
 
@@ -25,10 +26,26 @@ switch ($command) {
         }
         break;
 
+    case 'seed:base':
+        $seeder = new BaseSeeder(Connection::get(), $root . '/database/seeds/program_data.tsv');
+        $result = $seeder->run();
+
+        fwrite(
+            STDOUT,
+            sprintf(
+                "Seeded %d departments, %d programs, and %d official program offerings.\n",
+                $result['departments'],
+                $result['programs'],
+                $result['offerings']
+            )
+        );
+        break;
+
     case 'help':
     default:
         fwrite(STDOUT, "Scholarship Manager console\n\n");
         fwrite(STDOUT, "Commands:\n");
-        fwrite(STDOUT, "  migrate   Apply pending SQL migrations\n");
+        fwrite(STDOUT, "  migrate     Apply pending SQL migrations\n");
+        fwrite(STDOUT, "  seed:base   Seed College departments and official graduate program offerings\n");
         break;
 }
