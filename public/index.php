@@ -17,6 +17,7 @@ use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\CycleReportController;
 use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
+use App\Controllers\Admin\HistoricalImportController;
 use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReallocationController;
 use App\Controllers\Admin\NotificationController;
@@ -42,6 +43,7 @@ $cycleController = new CycleController($pdo, $auth);
 $cycleReportController = new CycleReportController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
+$historicalImportController = new HistoricalImportController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reallocationController = new ReallocationController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
@@ -208,6 +210,12 @@ $router->get('/admin/cycle-report', fn(array $p = []): string => $cycleReportCon
 $router->post('/admin/cycle-report/export', fn(array $p = []): never => $cycleReportController->export());
 $router->get('/admin/cycle-report/exports/{id}', fn(array $p): never => $cycleReportController->download($p));
 $router->post('/admin/cycle-report/complete', fn(array $p = []): never => $cycleReportController->complete());
+
+/* Historical structured imports */
+$router->get('/admin/history-imports', fn(array $p = []): string => $historicalImportController->index());
+$router->post('/admin/history-imports', fn(array $p = []): never => $historicalImportController->stage());
+$router->get('/admin/history-imports/{id}/map', fn(array $p): string => $historicalImportController->mapping($p));
+$router->post('/admin/history-imports/{id}/process', fn(array $p): never => $historicalImportController->process($p));
 
 /* Academic cycle setup */
 $router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
