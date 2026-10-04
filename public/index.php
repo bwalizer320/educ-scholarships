@@ -256,6 +256,8 @@ $router->get('/admin/scholarships', fn(array $p = []): string => $scholarshipCon
 $router->post('/admin/scholarships', fn(array $p = []): never => $scholarshipController->create());
 $router->get('/admin/scholarships/{id}', fn(array $p): string => $scholarshipController->detail($p));
 $router->post('/admin/scholarships/{id}/criteria', fn(array $p): never => $scholarshipController->addCriterion($p));
+$router->post('/admin/scholarships/{id}/criteria/{criterion}/delete', fn(array $p): never => $scholarshipController->deleteCriterion($p));
+$router->post('/admin/scholarships/{id}/rules', fn(array $p): never => $scholarshipController->saveRules($p));
 $router->post('/admin/scholarships/{id}/add-to-cycle', fn(array $p): never => $scholarshipController->addToCycle($p));
 $router->post('/admin/scholarships/{id}/intent-version', fn(array $p): never => $scholarshipController->newVersion($p));
 
