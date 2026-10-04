@@ -85,6 +85,39 @@ final class AwardService
         return (int) $this->pdo->lastInsertId();
     }
 
+    public function createDeanReallocation(
+        int $cycleId,
+        int $studentId,
+        int $cycleScholarshipId,
+        float $amount,
+        string $eligibilityStatus,
+        string $awardPeriod = 'academic_year'
+    ): int {
+        if ($amount <= 0) {
+            throw new RuntimeException('Award amount must be greater than zero.');
+        }
+
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO awards (
+                public_id, cycle_id, cycle_scholarship_id, cycle_allocation_id,
+                student_id, award_origin, total_amount, award_period,
+                eligibility_status, enrollment_status, status
+             ) VALUES (
+                UUID(), ?, ?, NULL, ?, 'deans_office_reallocation', ?, ?, ?, 'not_checked', 'pending_verification'
+             )"
+        );
+        $stmt->execute([
+            $cycleId,
+            $cycleScholarshipId,
+            $studentId,
+            $amount,
+            $awardPeriod,
+            $eligibilityStatus,
+        ]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
     public function replaceDistributions(int $awardId, array $distributions): void
     {
         $awardStmt = $this->pdo->prepare('SELECT total_amount FROM awards WHERE id = ?');
