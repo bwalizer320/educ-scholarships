@@ -95,6 +95,15 @@ final class TestSeeder
                 $this->ensureApplication($cycleId, $programId, ...$student);
             }
 
+            $recipient = $this->ensureRecipientAward(
+                $cycleId,
+                $cycleScholarships[0],
+                $programId,
+                '00000001',
+                'avery.johnson@example.test',
+                'Scholarships123!'
+            );
+
             $this->pdo->commit();
 
             return [
@@ -104,6 +113,8 @@ final class TestSeeder
                 'scholarships' => count($scholarships),
                 'students' => count($students),
                 'coordinator_email' => 'jordan.reviewer@example.test',
+                'recipient_email' => $recipient['email'],
+                'recipient_award_public_id' => $recipient['award_public_id'],
                 'test_password' => 'Scholarships123!',
             ];
         } catch (\Throwable $e) {
@@ -448,4 +459,115 @@ final class TestSeeder
             json_encode(['gpa'=>$gpa,'residency_state'=>$state,'financial_need'=>$need,'program_id'=>$programId],JSON_THROW_ON_ERROR)
         ]);
     }
+
+    private function ensureRecipientAward(
+        int $cycleId,
+        int $cycleScholarshipId,
+        int $programId,
+        string $universityId,
+        string $email,
+        string $password
+    ): array {
+        $studentStmt = $this->pdo->prepare('SELECT * FROM students WHERE university_id = ?');
+        $studentStmt->execute([$universityId]);
+        $student = $studentStmt->fetch();
+
+        if (!$student) {
+            throw new RuntimeException('Test recipient student was not found.');
+        }
+
+        $allocationStmt = $this->pdo->prepare(
+            'SELECT id FROM cycle_allocations WHERE cycle_scholarship_id = ? AND org_unit_id = ? LIMIT 1'
+        );
+        $allocationStmt->execute([$cycleScholarshipId, $programId]);
+        $allocationId = (int) $allocationStmt->fetchColumn();
+
+        $awardStmt = $this->pdo->prepare(
+            'SELECT id, public_id FROM awards WHERE cycle_scholarship_id = ? AND student_id = ? LIMIT 1'
+        );
+        $awardStmt->execute([$cycleScholarshipId, $student['id']]);
+        $award = $awardStmt->fetch();
+
+        if (!$award) {
+            $insertAward = $this->pdo->prepare(
+                "INSERT INTO awards (
+                    public_id, cycle_id, cycle_scholarship_id, cycle_allocation_id,
+                    student_id, award_origin, total_amount, award_period,
+                    eligibility_status, enrollment_status, status,
+                    approved_at, notified_at
+                 ) VALUES (UUID(), ?, ?, ?, ?, 'new', 2000.00, 'academic_year',
+                           'eligible', 'verified_enrolled', 'notified', NOW(), NOW())"
+            );
+            $insertAward->execute([
+                $cycleId,
+                $cycleScholarshipId,
+                $allocationId ?: null,
+                $student['id'],
+            ]);
+            $awardId = (int) $this->pdo->lastInsertId();
+
+            $publicStmt = $this->pdo->prepare('SELECT public_id FROM awards WHERE id = ?');
+            $publicStmt->execute([$awardId]);
+            $award = ['id'=>$awardId,'public_id'=>(string)$publicStmt->fetchColumn()];
+
+            $terms = $this->pdo->prepare(
+                'SELECT id, season FROM academic_terms WHERE cycle_id = ? ORDER BY calendar_year, season'
+            );
+            $terms->execute([$cycleId]);
+            $termMap = [];
+            foreach ($terms->fetchAll() as $term) {
+                $termMap[$term['season']] = (int) $term['id'];
+            }
+
+            $dist = $this->pdo->prepare(
+                "INSERT INTO award_distributions (award_id, academic_term_id, amount, source)
+                 VALUES (?, ?, ?, 'default')"
+            );
+            $dist->execute([$awardId, $termMap['fall'], 1000.00]);
+            $dist->execute([$awardId, $termMap['spring'], 1000.00]);
+        }
+
+        $userStmt = $this->pdo->prepare(
+            "SELECT id FROM users WHERE student_id = ? OR (person_type = 'student' AND LOWER(email) = LOWER(?)) LIMIT 1"
+        );
+        $userStmt->execute([$student['id'], $email]);
+        $userId = $userStmt->fetchColumn();
+
+        if ($userId === false) {
+            $insertUser = $this->pdo->prepare(
+                "INSERT INTO users (
+                    public_id, person_type, staff_role, student_id, first_name, last_name,
+                    display_name, email, active
+                 ) VALUES (UUID(), 'student', NULL, ?, ?, ?, ?, ?, 1)"
+            );
+            $insertUser->execute([
+                $student['id'],
+                $student['first_name'],
+                $student['last_name'],
+                $student['display_name'],
+                $email,
+            ]);
+            $userId = (int) $this->pdo->lastInsertId();
+        }
+
+        $identity = $this->pdo->prepare(
+            "INSERT INTO auth_identities (
+                user_id, provider, provider_subject, password_hash, activated_at
+             ) VALUES (?, 'local', ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+                password_hash = VALUES(password_hash),
+                activated_at = NOW()"
+        );
+        $identity->execute([
+            $userId,
+            strtolower($email),
+            password_hash($password, PASSWORD_ARGON2ID),
+        ]);
+
+        return [
+            'email'=>$email,
+            'award_public_id'=>$award['public_id'],
+        ];
+    }
+
 }
