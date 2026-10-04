@@ -47,6 +47,26 @@ final class AuthService
         return true;
     }
 
+    public function loginUser(int $userId): void
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = ? AND active = 1');
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            throw new \RuntimeException('User account could not be activated.');
+        }
+
+        session_regenerate_id(true);
+        $_SESSION['auth_user_id'] = (int) $user['id'];
+        $_SESSION['auth_person_type'] = $user['person_type'];
+        $_SESSION['auth_staff_role'] = $user['staff_role'];
+        $_SESSION['auth_display_name'] = $user['display_name'];
+
+        $this->pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')
+            ->execute([$userId]);
+    }
+
     public function logout(): void
     {
         $_SESSION = [];
