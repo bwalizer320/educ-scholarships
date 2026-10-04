@@ -86,7 +86,7 @@ $router->post('/login', static function () use ($auth): never {
             exit;
         }
 
-        header('Location: /dashboard');
+        header('Location: ' . ($auth->personType() === 'student' ? '/portal' : '/dashboard'));
         exit;
     } catch (\Throwable $e) {
         Flash::error($e->getMessage());
