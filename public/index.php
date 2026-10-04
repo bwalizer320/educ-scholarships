@@ -8,6 +8,8 @@ use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\PlanningController;
+use App\Controllers\Admin\NotificationController;
+use App\Controllers\Admin\TemplateController;
 use App\Controllers\Admin\ReviewSetupController;
 use App\Database\Connection;
 use App\Http\Csrf;
@@ -25,6 +27,8 @@ $cycleController = new CycleController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
+$notificationController = new NotificationController($pdo, $auth);
+$templateController = new TemplateController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
@@ -188,6 +192,14 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Templates and notifications */
+$router->get('/admin/templates', fn(array $p = []): string => $templateController->index());
+$router->post('/admin/templates/letters', fn(array $p = []): never => $templateController->saveLetter());
+$router->post('/admin/templates/email', fn(array $p = []): never => $templateController->saveEmail());
+$router->get('/notifications/ready', fn(array $p = []): string => $notificationController->ready());
+$router->post('/notifications/queue', fn(array $p = []): never => $notificationController->queue());
+$router->get('/notifications/history', fn(array $p = []): string => $notificationController->history());
 
 /* Dean's Office review */
 $router->get('/dean/recommendations', fn(array $p = []): string => $deanReviewController->recommendations());
