@@ -1,6 +1,6 @@
 [Unit]
 Description=Scholarship Manager queued mail worker
-After=network.target mariadb.service php8.5-fpm.service
+After=network-online.target\nWants=network-online.target
 
 [Service]
 Type=oneshot
