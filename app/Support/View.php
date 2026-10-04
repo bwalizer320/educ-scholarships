@@ -166,6 +166,7 @@ HTML;
         return <<<'HTML'
 <nav aria-label="Primary">
     <a href="/dashboard">Dashboard</a>
+    <a href="/review">Program Review</a>
     <a href="/admin/cycles">Cycles</a>
     <a href="/admin/planning">Planning</a>
     <a href="/admin/renewals">Renewals</a>
