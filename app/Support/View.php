@@ -178,6 +178,8 @@ HTML;
     <a href="/admin/enrollment">Enrollment</a>
     <a href="/dean/recommendations">Dean Review</a>
     <a href="/dean/verification">Verification</a>
+    <a href="/notifications/ready">Notify</a>
+    <a href="/admin/templates">Templates</a>
 </nav>
 HTML;
     }
