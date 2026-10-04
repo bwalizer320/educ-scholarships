@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Pdf\LetterRenderer;
-use App\Storage\LocalFileStorage;
+use App\Services\Recipients\RecipientAccountService;
 use App\Support\Env;
 use App\Support\MergeTemplate;
 use PDO;
@@ -90,6 +90,8 @@ final class NotificationService
                 ? 'This scholarship is intended to be distributed during your student-teaching semester.'
                 : '',
             'student_portal_url' => $portalUrl,
+            'portal_access_url' => $portalUrl,
+            'activation_url' => '',
             'signature_name' => 'Dean’s Office',
             'signature_title' => 'University of Iowa College of Education',
         ];
@@ -117,6 +119,11 @@ final class NotificationService
         }
 
         $merge = $this->awardMergeData($awardId);
+        $access = (new RecipientAccountService($this->pdo))->ensureForAward($awardId);
+        $merge['student_portal_url'] = $access['portal_url'];
+        $merge['portal_access_url'] = $access['activation_url'] ?: $access['portal_url'];
+        $merge['activation_url'] = $access['activation_url'] ?: '';
+
         $letterType = $award['award_origin'] === 'renewal' ? 'renewal' : 'new_award';
 
         $letterStmt = $this->pdo->prepare(
