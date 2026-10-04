@@ -55,6 +55,7 @@ final class View
             : '';
 
         $nav = $userName ? self::nav() : '';
+        $shellClass = $userName ? 'app-shell' : 'app-shell public-shell';
 
         return <<<HTML
 <!doctype html>
@@ -87,6 +88,7 @@ final class View
         .user-block span { color: #ddd; }
         .cycle-pill { border: 1px solid #777; border-radius: 999px; padding: .2rem .65rem; font-size: .82rem; }
         .app-shell { max-width: 90rem; margin: 0 auto; display: grid; grid-template-columns: 15rem 1fr; min-height: calc(100vh - 69px); }
+        .app-shell.public-shell { grid-template-columns: 1fr; max-width: 50rem; min-height: auto; }
         nav { background: #fff; border-right: 1px solid var(--border); padding: 1rem; }
         nav a { display: block; padding: .58rem .7rem; border-radius: .3rem; color: #151515; text-decoration: none; font-weight: 600; }
         nav a:hover { background: #f0f0f0; }
@@ -150,7 +152,7 @@ final class View
         <div class="header-meta">{$cycleHtml}{$userHtml}</div>
     </div>
 </header>
-<div class="app-shell">
+<div class="{$shellClass}">
     {$nav}
     <main id="main">{$body}</main>
 </div>
