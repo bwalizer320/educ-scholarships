@@ -296,10 +296,6 @@ final class ScholarshipController extends BaseAdminController
                     : $rawValue;
             }
 
-            $sort=(int)$this->pdo->prepare(
-                'SELECT COALESCE(MAX(sort_order),0)+10 FROM scholarship_criteria WHERE intent_version_id=?'
-            )->execute([(int)$intent['id']]);
-
             $sortStmt=$this->pdo->prepare(
                 'SELECT COALESCE(MAX(sort_order),0)+10 FROM scholarship_criteria WHERE intent_version_id=?'
             );
