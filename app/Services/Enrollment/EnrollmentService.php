@@ -36,12 +36,12 @@ final class EnrollmentService
         }
 
         $recordStmt = $this->pdo->prepare(
-            'SELECT
+            "SELECT
                 MAX(COALESCE(enrolled_credit_hours, 0)) AS credit_hours,
                 MAX(CASE WHEN UPPER(COALESCE(enrollment_status, '')) = 'ENROLLED' THEN 1 ELSE 0 END) AS has_enrolled_row
              FROM enrollment_records
              WHERE enrollment_import_id = ?
-               AND student_id = ?'
+               AND student_id = ?"
         );
         $recordStmt->execute([(int) $import['id'], $studentId]);
         $record = $recordStmt->fetch();
