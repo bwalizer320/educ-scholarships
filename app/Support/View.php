@@ -217,9 +217,11 @@ HTML;
     private static function nav(?string $role): string
     {
         if ($role === 'student') {
-            return self::navGroup('Awards', [
-                ['/portal', 'My Awards'],
-            ]);
+            return '<nav aria-label="Recipient navigation">'
+                . self::navGroup('Awards', [
+                    ['/portal', 'My Awards'],
+                ])
+                . '</nav>';
         }
 
         if (in_array($role, ['program_coordinator', 'department_chair'], true)) {
