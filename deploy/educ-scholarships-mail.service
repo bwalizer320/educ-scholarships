@@ -1,0 +1,10 @@
+[Unit]
+Description=Scholarship Manager queued mail worker
+After=network-online.target\nWants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/educ-scholarships
+ExecStart=/usr/bin/php /var/www/educ-scholarships/bin/console jobs:work

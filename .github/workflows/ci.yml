@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - phase-1-foundation
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: educ_scholarships
+          MARIADB_USER: scholarship
+          MARIADB_PASSWORD: scholarship
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: pdo_mysql, mbstring, dom, zip
+          coverage: none
+
+      - name: Validate Composer
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Lint PHP source
+        run: find app public tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Run migrations
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php bin/console migrate
+
+      - name: Seed official program data
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php bin/console seed:base
+
+      - name: Seed fake workflow test data
+        env:
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php bin/console seed:test
+
+      - name: Run seeded integration checks
+        env:
+          APP_ENV: testing
+          MAIL_DRIVER: log
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php tests/integration.php
+
+      - name: Run deployment doctor
+        env:
+          APP_ENV: testing
+          MAIL_DRIVER: log
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php bin/console doctor
+
+      - name: HTTP smoke test
+        env:
+          APP_ENV: testing
+          APP_URL: http://127.0.0.1:8080
+          MAIL_DRIVER: log
+          SESSION_SECURE: "false"
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: |
+          php -S 127.0.0.1:8080 -t public >/tmp/educ-scholarships-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 1
+          test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "ok"
+          curl -fsS http://127.0.0.1:8080/login | grep -q "Sign in"
+
+      - name: Run domain tests
+        run: composer test
