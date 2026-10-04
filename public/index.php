@@ -23,6 +23,7 @@ $cycleController = new CycleController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
+$userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
 
 $router->get('/', static function () use ($auth): never {
@@ -183,6 +184,11 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Staff users */
+$router->get('/admin/users', fn(array $p = []): string => $userController->index());
+$router->post('/admin/users', fn(array $p = []): never => $userController->create());
+$router->post('/admin/users/{id}/toggle', fn(array $p): never => $userController->toggle($p));
 
 /* Program and department scholarship review */
 $router->get('/review', fn(array $p = []): string => $reviewController->index());
