@@ -210,13 +210,17 @@ final class RecipientAdminController extends BaseAdminController
         $id = (int) ($params['id'] ?? 0);
 
         $stmt = $this->pdo->prepare(
-            "SELECT ts.*, a.cycle_id,
+            "SELECT ts.*, a.cycle_id, st.display_name AS student_name,
+                    s.name AS scholarship_name,
                     COALESCE(rfo.id, fo.id) AS file_id,
                     COALESCE(rfo.storage_key, fo.storage_key) AS storage_key,
                     COALESCE(rfo.original_filename, fo.original_filename) AS original_filename,
                     COALESCE(rfo.mime_type, fo.mime_type) AS mime_type
              FROM thank_you_submissions ts
              JOIN awards a ON a.id = ts.award_id
+             JOIN students st ON st.id = ts.student_id
+             JOIN cycle_scholarships cs ON cs.id = a.cycle_scholarship_id
+             JOIN scholarships s ON s.id = cs.scholarship_id
              LEFT JOIN file_objects fo ON fo.id = ts.uploaded_file_id
              LEFT JOIN file_objects rfo ON rfo.id = ts.rendered_file_id
              WHERE ts.id = ? AND a.cycle_id = ?"
@@ -235,7 +239,13 @@ final class RecipientAdminController extends BaseAdminController
              ) VALUES (?, ?, 'single')"
         )->execute([$id, $this->auth->userId()]);
 
-        $this->stream($row);
+        $extension = pathinfo((string) $row['original_filename'], PATHINFO_EXTENSION) ?: 'pdf';
+        $downloadName = $this->thankYouFilename(
+            (string) $row['scholarship_name'],
+            (string) $row['student_name'],
+            $extension
+        );
+        $this->stream($row, $downloadName);
     }
 
     public function zip(): never
@@ -291,9 +301,14 @@ final class RecipientAdminController extends BaseAdminController
 
             $source = $storage->path((string) $row['storage_key']);
             $extension = pathinfo((string) $row['original_filename'], PATHINFO_EXTENSION) ?: 'pdf';
-            $safeStudent = preg_replace('/[^A-Za-z0-9]+/', '_', (string) $row['student_name']) ?: 'Student';
-            $safeScholarship = preg_replace('/[^A-Za-z0-9]+/', '_', (string) $row['scholarship_name']) ?: 'Scholarship';
-            $zip->addFile($source, trim($safeScholarship,'_') . '/' . trim($safeStudent,'_') . '_Thank_You.' . $extension);
+            $zip->addFile(
+                $source,
+                $this->thankYouFilename(
+                    (string) $row['scholarship_name'],
+                    (string) $row['student_name'],
+                    $extension
+                )
+            );
 
             $this->pdo->prepare(
                 "INSERT INTO thank_you_downloads (
@@ -312,14 +327,24 @@ final class RecipientAdminController extends BaseAdminController
         exit;
     }
 
-    private function stream(array $file): never
+    private function stream(array $file, ?string $downloadName = null): never
     {
         $path = (new LocalFileStorage())->path((string) $file['storage_key']);
+        $downloadName ??= (string) $file['original_filename'];
         header('Content-Type: ' . $file['mime_type']);
         header('Content-Length: ' . (string) filesize($path));
-        header('Content-Disposition: attachment; filename="' . str_replace('"','',(string)$file['original_filename']) . '"');
+        header('Content-Disposition: attachment; filename="' . str_replace('"','',$downloadName) . '"');
         header('X-Content-Type-Options: nosniff');
         readfile($path);
         exit;
+    }
+
+    private function thankYouFilename(string $scholarshipName, string $studentName, string $extension): string
+    {
+        $scholarship = trim(preg_replace('/[^A-Za-z0-9]+/', '_', $scholarshipName) ?: 'Scholarship', '_');
+        $student = trim(preg_replace('/[^A-Za-z0-9]+/', '_', $studentName) ?: 'Student', '_');
+        $extension = preg_replace('/[^A-Za-z0-9]/', '', $extension) ?: 'pdf';
+
+        return $scholarship . '_' . $student . '.' . strtolower($extension);
     }
 }
