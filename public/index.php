@@ -256,6 +256,7 @@ $router->get('/dean/recommendations', fn(array $p = []): string => $deanReviewCo
 $router->post('/dean/recommendations/{id}/award', fn(array $p): never => $deanReviewController->createAward($p));
 $router->get('/dean/verification', fn(array $p = []): string => $deanReviewController->verification());
 $router->post('/dean/verification/{id}/approve', fn(array $p): never => $deanReviewController->approve($p));
+$router->post('/dean/verification/{id}/student-teaching-term', fn(array $p): never => $deanReviewController->setStudentTeachingTerm($p));
 
 /* Enrollment snapshots */
 $router->get('/admin/enrollment', fn(array $p = []): string => $enrollmentController->index());
