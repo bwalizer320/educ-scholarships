@@ -186,6 +186,7 @@ HTML;
     <a href="/admin/applicants">Applicants</a>
     <a href="/admin/enrollment">Enrollment</a>
     <a href="/dean/recommendations">Dean Review</a>
+    <a href="/dean/reallocation">Reallocation</a>
     <a href="/dean/verification">Verification</a>
     <a href="/admin/distribution-requests">Distribution Requests</a>
     <a href="/admin/thank-yous">Thank-you Letters</a>
