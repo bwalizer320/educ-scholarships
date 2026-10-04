@@ -341,6 +341,7 @@ $router->get('/review/{org}', fn(array $p): string => $reviewController->unit($p
 $router->get('/review/{org}/allocation/{allocation}', fn(array $p): string => $reviewController->allocation($p));
 $router->post('/review/{org}/allocation/{allocation}/recommend', fn(array $p): never => $reviewController->recommend($p));
 $router->post('/review/{org}/allocation/{allocation}/recommend/remove', fn(array $p): never => $reviewController->removeRecommendation($p));
+$router->get('/review/{org}/applicants/{application}', fn(array $p): string => $reviewController->applicant($p));
 $router->get('/review/{org}/applicants/{application}/rubric', fn(array $p): string => $reviewController->rubric($p));
 $router->post('/review/{org}/applicants/{application}/rubric', fn(array $p): never => $reviewController->saveRubric($p));
 $router->post('/review/{org}/submit', fn(array $p): never => $reviewController->submit($p));
