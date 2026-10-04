@@ -171,6 +171,16 @@ HTML;
 HTML;
         }
 
+        if (in_array($role, ['program_coordinator', 'department_chair'], true)) {
+            return <<<'HTML'
+<nav aria-label="Primary">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/review">Program Review</a>
+    <a href="/thank-yous/review">Thank-you Review</a>
+</nav>
+HTML;
+        }
+
         return <<<'HTML'
 <nav aria-label="Primary">
     <a href="/dashboard">Dashboard</a>
@@ -195,6 +205,7 @@ HTML;
     <a href="/admin/thank-you-reminders">Thank-you Reminders</a>
     <a href="/admin/thank-you-reviewers">Thank-you Reviewers</a>
     <a href="/notifications/ready">Notify</a>
+    <a href="/notifications/history">Notification History</a>
     <a href="/admin/templates">Templates</a>
 </nav>
 HTML;
