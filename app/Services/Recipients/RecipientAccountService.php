@@ -39,7 +39,8 @@ final class RecipientAccountService
                           AND ai.password_hash IS NOT NULL
                     ) AS has_local_password
              FROM users u
-             WHERE u.student_id = ? OR LOWER(u.email) = LOWER(?)
+             WHERE u.student_id = ?
+                OR (u.person_type = 'student' AND LOWER(u.email) = LOWER(?))
              ORDER BY u.student_id IS NOT NULL DESC
              LIMIT 1"
         );
