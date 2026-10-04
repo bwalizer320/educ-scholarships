@@ -177,6 +177,7 @@ HTML;
     <a href="/review">Program Review</a>
     <a href="/thank-yous/review">Thank-you Review</a>
     <a href="/admin/cycles">Cycles</a>
+    <a href="/admin/cycle-report">Cycle Report</a>
     <a href="/admin/planning">Planning</a>
     <a href="/admin/renewals">Renewals</a>
     <a href="/admin/allocations">Allocations</a>
