@@ -9,6 +9,7 @@ use App\Database\Connection;
 use App\Database\Migrator;
 use App\Database\TestSeeder;
 use App\Support\Env;
+use App\Support\Doctor;
 use App\Mail\MailProviderFactory;
 use App\Services\Notifications\MailJobWorker;
 use App\Storage\LocalFileStorage;
@@ -76,6 +77,18 @@ switch ($command) {
         );
         break;
 
+    case 'doctor':
+        $checks = Doctor::run($root);
+        $failed = 0;
+        foreach ($checks as $name => $check) {
+            $ok = (bool) $check['ok'];
+            fwrite(STDOUT, sprintf("[%s] %-24s %s\n", $ok ? 'OK' : 'FAIL', $name, $check['detail']));
+            if (!$ok) {
+                $failed++;
+            }
+        }
+        exit($failed > 0 ? 1 : 0);
+
     case 'jobs:work':
         $worker = new MailJobWorker(
             Connection::get(),
@@ -98,5 +111,6 @@ switch ($command) {
         fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
         fwrite(STDOUT, "  seed:test   Load fake scholarship/reviewer/applicant data (non-production only)\n");
         fwrite(STDOUT, "  jobs:work   Process up to 25 queued notification email jobs\n");
+        fwrite(STDOUT, "  doctor      Check PHP extensions, database, storage, and production settings\n");
         break;
 }
