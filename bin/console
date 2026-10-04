@@ -9,6 +9,9 @@ use App\Database\Connection;
 use App\Database\Migrator;
 use App\Database\TestSeeder;
 use App\Support\Env;
+use App\Mail\SmtpMailProvider;
+use App\Services\Notifications\MailJobWorker;
+use App\Storage\LocalFileStorage;
 
 $root = require dirname(__DIR__) . '/app/bootstrap.php';
 
@@ -71,6 +74,19 @@ switch ($command) {
         );
         break;
 
+    case 'jobs:work':
+        $worker = new MailJobWorker(
+            Connection::get(),
+            new SmtpMailProvider(),
+            new LocalFileStorage()
+        );
+        $processed = 0;
+        while ($processed < 25 && $worker->workOne()) {
+            $processed++;
+        }
+        fwrite(STDOUT, "Processed {$processed} queued mail job(s).\n");
+        break;
+
     case 'help':
     default:
         fwrite(STDOUT, "Scholarship Manager console\n\n");
@@ -79,5 +95,6 @@ switch ($command) {
         fwrite(STDOUT, "  seed:base   Seed College departments and official graduate program offerings\n");
         fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
         fwrite(STDOUT, "  seed:test   Load fake scholarship/reviewer/applicant data (non-production only)\n");
+        fwrite(STDOUT, "  jobs:work   Process up to 25 queued notification email jobs\n");
         break;
 }
