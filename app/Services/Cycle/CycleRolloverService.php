@@ -28,21 +28,45 @@ final class CycleRolloverService
     {
     }
 
+    public function createInitial(string $label, int $startYear, int $endYear): int
+    {
+        $this->assertYears($startYear, $endYear);
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $insert = $this->pdo->prepare(
+                "INSERT INTO academic_cycles (
+                    public_id, label, start_year, end_year, status, is_current
+                 ) VALUES (UUID(), ?, ?, ?, 'setup', 0)"
+            );
+            $insert->execute([$label, $startYear, $endYear]);
+            $cycleId = (int) $this->pdo->lastInsertId();
+
+            $this->createTerms($cycleId, $startYear, $endYear);
+            $this->createChecklist($cycleId);
+
+            $this->pdo->commit();
+
+            return $cycleId;
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function createFromPrior(
         int $sourceCycleId,
         string $label,
         int $startYear,
         int $endYear
     ): int {
-        if ($endYear !== $startYear + 1) {
-            throw new RuntimeException('Academic cycle end year must follow the start year.');
-        }
+        $this->assertYears($startYear, $endYear);
 
         $source = $this->pdo->prepare('SELECT * FROM academic_cycles WHERE id = ?');
         $source->execute([$sourceCycleId]);
-        $prior = $source->fetch();
 
-        if (!$prior) {
+        if (!$source->fetch()) {
             throw new RuntimeException('Source academic cycle not found.');
         }
 
@@ -70,6 +94,13 @@ final class CycleRolloverService
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
             throw $e;
+        }
+    }
+
+    private function assertYears(int $startYear, int $endYear): void
+    {
+        if ($startYear < 2000 || $endYear !== $startYear + 1) {
+            throw new RuntimeException('Academic cycle end year must follow the start year.');
         }
     }
 
@@ -140,26 +171,17 @@ final class CycleRolloverService
             "INSERT INTO rubrics (cycle_id, org_unit_id, name, status, copied_from_rubric_id)
              VALUES (?, ?, ?, 'draft', ?)"
         );
-
         $sourceItems = $this->pdo->prepare(
             'SELECT label, description, max_points, sort_order
-             FROM rubric_items
-             WHERE rubric_id = ?
-             ORDER BY sort_order, id'
+             FROM rubric_items WHERE rubric_id = ? ORDER BY sort_order, id'
         );
-
         $insertItem = $this->pdo->prepare(
             'INSERT INTO rubric_items (rubric_id, label, description, max_points, sort_order)
              VALUES (?, ?, ?, ?, ?)'
         );
 
         foreach ($sourceStmt->fetchAll() as $rubric) {
-            $insertRubric->execute([
-                $newCycleId,
-                $rubric['org_unit_id'],
-                $rubric['name'],
-                $rubric['id'],
-            ]);
+            $insertRubric->execute([$newCycleId, $rubric['org_unit_id'], $rubric['name'], $rubric['id']]);
             $newRubricId = (int) $this->pdo->lastInsertId();
 
             $sourceItems->execute([(int) $rubric['id']]);
@@ -211,7 +233,6 @@ final class CycleRolloverService
         $newCycleScholarship = $this->pdo->prepare(
             'SELECT id FROM cycle_scholarships WHERE cycle_id = ? AND scholarship_id = ? LIMIT 1'
         );
-
         $insert = $this->pdo->prepare(
             "INSERT INTO renewal_candidates (
                 cycle_id, scholarship_id, cycle_scholarship_id, student_id,
@@ -221,16 +242,10 @@ final class CycleRolloverService
         );
 
         foreach ($stmt->fetchAll() as $row) {
-            $maxYears = $row['max_total_award_years'] !== null
-                ? (int) $row['max_total_award_years']
-                : null;
+            $maxYears = $row['max_total_award_years'] !== null ? (int) $row['max_total_award_years'] : null;
             $priorYears = (int) $row['prior_award_years'];
 
-            if ($maxYears !== null && $priorYears >= $maxYears) {
-                continue;
-            }
-
-            if ($row['org_unit_id'] === null) {
+            if (($maxYears !== null && $priorYears >= $maxYears) || $row['org_unit_id'] === null) {
                 continue;
             }
 
