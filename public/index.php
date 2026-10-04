@@ -31,6 +31,13 @@ use App\Support\View;
 
 require dirname(__DIR__) . '/app/bootstrap.php';
 
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: same-origin');
+header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+header('Cache-Control: no-store, private');
+
 $pdo = Connection::get();
 $auth = new AuthService($pdo);
 $router = new Router();
@@ -54,6 +61,19 @@ $thankYouAdminController = new ThankYouAdminController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
+
+$router->get('/healthz', static function () use ($pdo): string {
+    header('Content-Type: text/plain; charset=utf-8');
+
+    try {
+        $pdo->query('SELECT 1')->fetchColumn();
+        http_response_code(200);
+        return 'ok';
+    } catch (\Throwable) {
+        http_response_code(503);
+        return 'unavailable';
+    }
+});
 
 $router->get('/', static function () use ($auth): never {
     if (!$auth->check()) {
