@@ -45,7 +45,7 @@ final class TemplateController extends BaseAdminController
             . '<code>{{scholarship_name}}</code>, <code>{{academic_year}}</code>, '
             . '<code>{{award_total}}</code>, <code>{{fall_amount}}</code>, <code>{{spring_amount}}</code>, '
             . '<code>{{thank_you_deadline}}</code>, <code>{{student_teaching_language}}</code>, '
-            . '<code>{{student_portal_url}}</code>.';
+            . '<code>{{student_portal_url}}</code>, <code>{{portal_access_url}}</code>, and <code>{{activation_url}}</code>.';
 
         $body = '<div class="page-header"><div><h1>Letter and email templates</h1>'
             . '<p>Create versioned templates used to generate immutable award letters and notification emails.</p></div></div>'
