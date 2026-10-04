@@ -175,6 +175,7 @@ HTML;
 <nav aria-label="Primary">
     <a href="/dashboard">Dashboard</a>
     <a href="/review">Program Review</a>
+    <a href="/thank-yous/review">Thank-you Review</a>
     <a href="/admin/cycles">Cycles</a>
     <a href="/admin/planning">Planning</a>
     <a href="/admin/renewals">Renewals</a>
@@ -188,6 +189,8 @@ HTML;
     <a href="/dean/verification">Verification</a>
     <a href="/admin/distribution-requests">Distribution Requests</a>
     <a href="/admin/thank-yous">Thank-you Letters</a>
+    <a href="/admin/thank-you-reminders">Thank-you Reminders</a>
+    <a href="/admin/thank-you-reviewers">Thank-you Reviewers</a>
     <a href="/notifications/ready">Notify</a>
     <a href="/admin/templates">Templates</a>
 </nav>
