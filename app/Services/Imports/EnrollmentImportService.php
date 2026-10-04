@@ -21,9 +21,10 @@ final class EnrollmentImportService
         int $academicTermId,
         string $path,
         string $filename,
-        int $userId
+        int $userId,
+        ?int $fileId = null
     ): array {
-        $importId = $this->createImport($cycleId, $academicTermId, $filename, $userId);
+        $importId = $this->createImport($cycleId, $academicTermId, $filename, $userId, $fileId);
 
         try {
             $rows = [];
@@ -96,15 +97,16 @@ final class EnrollmentImportService
         int $cycleId,
         int $academicTermId,
         string $filename,
-        int $userId
+        int $userId,
+        ?int $fileId
     ): int {
         $stmt = $this->pdo->prepare(
             "INSERT INTO enrollment_imports (
-                cycle_id, academic_term_id, filename, status,
+                cycle_id, academic_term_id, file_id, filename, status,
                 is_complete_snapshot, imported_by_user_id
-             ) VALUES (?, ?, ?, 'processing', 1, ?)"
+             ) VALUES (?, ?, ?, ?, 'processing', 1, ?)"
         );
-        $stmt->execute([$cycleId, $academicTermId, $filename, $userId]);
+        $stmt->execute([$cycleId, $academicTermId, $fileId, $filename, $userId]);
 
         return (int) $this->pdo->lastInsertId();
     }
