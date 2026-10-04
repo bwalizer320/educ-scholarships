@@ -3,9 +3,11 @@
 
 declare(strict_types=1);
 
+use App\Database\AdminSeeder;
 use App\Database\BaseSeeder;
 use App\Database\Connection;
 use App\Database\Migrator;
+use App\Support\Env;
 
 $root = require dirname(__DIR__) . '/app/bootstrap.php';
 
@@ -41,11 +43,23 @@ switch ($command) {
         );
         break;
 
+    case 'seed:admin':
+        $name = Env::get('BOOTSTRAP_ADMIN_NAME', '') ?? '';
+        $email = Env::get('BOOTSTRAP_ADMIN_EMAIL', '') ?? '';
+        $password = Env::get('BOOTSTRAP_ADMIN_PASSWORD', '') ?? '';
+        $hawkid = Env::get('BOOTSTRAP_ADMIN_HAWKID');
+
+        $seeder = new AdminSeeder(Connection::get());
+        $userId = $seeder->createOrUpdate($name, $email, $password, $hawkid ?: null);
+        fwrite(STDOUT, "Bootstrap system administrator ready (user ID {$userId}).\n");
+        break;
+
     case 'help':
     default:
         fwrite(STDOUT, "Scholarship Manager console\n\n");
         fwrite(STDOUT, "Commands:\n");
         fwrite(STDOUT, "  migrate     Apply pending SQL migrations\n");
         fwrite(STDOUT, "  seed:base   Seed College departments and official graduate program offerings\n");
+        fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
         break;
 }
