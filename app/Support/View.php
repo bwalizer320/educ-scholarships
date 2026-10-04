@@ -175,6 +175,7 @@ HTML;
     <a href="/admin/users">Users</a>
     <a href="/admin/rubrics">Rubrics</a>
     <a href="/admin/applicants">Applicants</a>
+    <a href="/admin/enrollment">Enrollment</a>
 </nav>
 HTML;
     }
