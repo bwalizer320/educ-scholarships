@@ -22,6 +22,7 @@ use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReallocationController;
 use App\Controllers\Admin\ScholarshipController;
 use App\Controllers\Admin\NotificationController;
+use App\Controllers\Admin\OrganizationController;
 use App\Controllers\Admin\TemplateController;
 use App\Controllers\Admin\TestMailController;
 use App\Controllers\Admin\ReviewSetupController;
@@ -57,6 +58,7 @@ $planningController = new PlanningController($pdo, $auth);
 $reallocationController = new ReallocationController($pdo, $auth);
 $scholarshipController = new ScholarshipController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
+$organizationController = new OrganizationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
 $testMailController = new TestMailController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
@@ -245,6 +247,9 @@ $router->get('/admin/history-imports', fn(array $p = []): string => $historicalI
 $router->post('/admin/history-imports', fn(array $p = []): never => $historicalImportController->stage());
 $router->get('/admin/history-imports/{id}/map', fn(array $p): string => $historicalImportController->mapping($p));
 $router->post('/admin/history-imports/{id}/process', fn(array $p): never => $historicalImportController->process($p));
+
+/* Canonical organization */
+$router->get('/admin/organization', fn(array $p = []): string => $organizationController->index());
 
 /* Scholarship catalog */
 $router->get('/admin/scholarships', fn(array $p = []): string => $scholarshipController->index());
