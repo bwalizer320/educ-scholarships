@@ -2,6 +2,8 @@
 /vendor/
 /storage/logs/*
 !/storage/logs/.gitkeep
+/storage/files/*
+!/storage/files/.gitkeep
 /storage/cache/*
 !/storage/cache/.gitkeep
 /storage/tmp/*
