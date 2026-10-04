@@ -54,7 +54,7 @@ final class View
             ? '<span class="cycle-pill">' . self::e($cycleLabel) . '</span>'
             : '';
 
-        $nav = $userName ? self::nav() : '';
+        $nav = $userName ? self::nav($role) : '';
         $shellClass = $userName ? 'app-shell' : 'app-shell public-shell';
 
         return <<<HTML
@@ -161,8 +161,16 @@ final class View
 HTML;
     }
 
-    private static function nav(): string
+    private static function nav(?string $role): string
     {
+        if ($role === 'student') {
+            return <<<'HTML'
+<nav aria-label="Recipient navigation">
+    <a href="/portal">My Awards</a>
+</nav>
+HTML;
+        }
+
         return <<<'HTML'
 <nav aria-label="Primary">
     <a href="/dashboard">Dashboard</a>
