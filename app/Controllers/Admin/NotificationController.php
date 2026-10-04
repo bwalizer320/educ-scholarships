@@ -59,7 +59,7 @@ final class NotificationController extends BaseAdminController
 
         $subject = $template['subject_template'] ?? 'Your {{scholarship_name}} award';
         $html = $template['html_template']
-            ?? '<p>Dear {{student_first_name}},</p><p>Congratulations. You have been selected for the {{scholarship_name}} in the amount of {{award_total}}.</p><p>Your award letter is attached. Please use the recipient portal to review your award and submit your required thank-you letter: {{student_portal_url}}</p>';
+            ?? '<p>Dear {{student_first_name}},</p><p>Congratulations. You have been selected for the {{scholarship_name}} in the amount of {{award_total}}.</p><p>Your award letter is attached. Please use this secure link to access the recipient portal, review your award, and submit your required thank-you letter: {{portal_access_url}}</p>';
 
         $body = '<div class="page-header"><div><h1>Ready to Notify</h1>'
             . '<p>Nothing is sent automatically. Select one or more approved awards, edit the message, and explicitly queue the notifications.</p></div>'
