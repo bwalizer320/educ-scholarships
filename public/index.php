@@ -14,6 +14,7 @@ use App\Controllers\RecipientController;
 use App\Controllers\ActivationController;
 use App\Controllers\Admin\ApplicantController;
 use App\Controllers\Admin\CycleController;
+use App\Controllers\Admin\CycleReportController;
 use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\PlanningController;
@@ -38,6 +39,7 @@ $recipientController = new RecipientController($pdo, $auth);
 $thankYouReviewController = new ThankYouReviewController($pdo, $auth, new UicaAccessService($pdo));
 
 $cycleController = new CycleController($pdo, $auth);
+$cycleReportController = new CycleReportController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
@@ -200,6 +202,12 @@ $router->get('/portal/awards/{public}', fn(array $p): string => $recipientContro
 $router->post('/portal/awards/{public}/distribution-request', fn(array $p): never => $recipientController->requestDistribution($p));
 $router->post('/portal/awards/{public}/thank-you', fn(array $p): never => $recipientController->submitThankYou($p));
 $router->get('/portal/awards/{public}/letter', fn(array $p): never => $recipientController->letter($p));
+
+/* Cycle close and reporting */
+$router->get('/admin/cycle-report', fn(array $p = []): string => $cycleReportController->index());
+$router->post('/admin/cycle-report/export', fn(array $p = []): never => $cycleReportController->export());
+$router->get('/admin/cycle-report/exports/{id}', fn(array $p): never => $cycleReportController->download($p));
+$router->post('/admin/cycle-report/complete', fn(array $p = []): never => $cycleReportController->complete());
 
 /* Academic cycle setup */
 $router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
