@@ -80,17 +80,32 @@ final class MailJobWorker
     {
         $payload = json_decode((string) $job['payload_json'], true, 512, JSON_THROW_ON_ERROR);
 
-        if (($job['job_type'] ?? '') !== 'award_notification' || empty($payload['notification_id'])) {
-            throw new RuntimeException('Unsupported mail job.');
+        if (empty($payload['notification_id'])) {
+            throw new RuntimeException('Mail job payload is missing notification_id.');
         }
 
+        if (($job['job_type'] ?? '') === 'award_notification') {
+            $this->processAwardNotification((int) $payload['notification_id']);
+            return;
+        }
+
+        if (($job['job_type'] ?? '') === 'thank_you_reminder') {
+            $this->processThankYouReminder((int) $payload['notification_id']);
+            return;
+        }
+
+        throw new RuntimeException('Unsupported mail job.');
+    }
+
+    private function processAwardNotification(int $notificationId): void
+    {
         $stmt = $this->pdo->prepare(
             "SELECT an.*, fo.storage_key, fo.original_filename
              FROM award_notifications an
              JOIN file_objects fo ON fo.id = an.letter_file_id
              WHERE an.id = ?"
         );
-        $stmt->execute([(int) $payload['notification_id']]);
+        $stmt->execute([$notificationId]);
         $notification = $stmt->fetch();
 
         if (!$notification) {
@@ -103,7 +118,7 @@ final class MailJobWorker
 
         $this->pdo->prepare(
             "UPDATE award_notifications SET status = 'sending' WHERE id = ?"
-        )->execute([(int) $notification['id']]);
+        )->execute([$notificationId]);
 
         $filePath = $this->storage->path((string) $notification['storage_key']);
 
@@ -122,7 +137,7 @@ final class MailJobWorker
                 "UPDATE award_notifications
                  SET status = 'failed', failed_at = NOW(), error_message = ?
                  WHERE id = ?"
-            )->execute([$result->error, (int) $notification['id']]);
+            )->execute([$result->error, $notificationId]);
 
             throw new RuntimeException($result->error ?: 'Email provider reported a failure.');
         }
@@ -135,7 +150,7 @@ final class MailJobWorker
                  SET status = 'sent', provider = 'smtp', provider_message_id = ?,
                      sent_at = NOW(), failed_at = NULL, error_message = NULL
                  WHERE id = ?"
-            )->execute([$result->providerMessageId, (int) $notification['id']]);
+            )->execute([$result->providerMessageId, $notificationId]);
 
             $this->pdo->prepare(
                 "UPDATE awards
@@ -152,6 +167,100 @@ final class MailJobWorker
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    private function processThankYouReminder(int $notificationId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM thank_you_reminder_notifications WHERE id = ?'
+        );
+        $stmt->execute([$notificationId]);
+        $notification = $stmt->fetch();
+
+        if (!$notification) {
+            throw new RuntimeException('Thank-you reminder record could not be found.');
+        }
+
+        if ($notification['status'] === 'sent') {
+            return;
+        }
+
+        $stillOutstanding = $this->pdo->prepare(
+            'SELECT 1
+             FROM awards a
+             LEFT JOIN thank_you_submissions ts ON ts.award_id = a.id
+             WHERE a.id = ? AND ts.id IS NULL'
+        );
+        $stillOutstanding->execute([(int) $notification['award_id']]);
+
+        if (!$stillOutstanding->fetchColumn()) {
+            $this->pdo->prepare(
+                "UPDATE thank_you_reminder_notifications
+                 SET status = 'failed', failed_at = NOW(),
+                     error_message = 'Skipped because thank-you letter was already submitted.'
+                 WHERE id = ?"
+            )->execute([$notificationId]);
+            return;
+        }
+
+        $this->pdo->prepare(
+            "UPDATE thank_you_reminder_notifications SET status = 'sending' WHERE id = ?"
+        )->execute([$notificationId]);
+
+        $result = $this->mailProvider->send(new MailMessage(
+            (string) $notification['recipient_email'],
+            (string) $notification['subject_snapshot'],
+            (string) $notification['html_body_snapshot']
+        ));
+
+        if (!$result->success) {
+            $this->pdo->prepare(
+                "UPDATE thank_you_reminder_notifications
+                 SET status = 'failed', failed_at = NOW(), error_message = ?
+                 WHERE id = ?"
+            )->execute([$result->error, $notificationId]);
+            throw new RuntimeException($result->error ?: 'Email provider reported a failure.');
+        }
+
+        $this->pdo->prepare(
+            "UPDATE thank_you_reminder_notifications
+             SET status = 'sent', provider = 'smtp', provider_message_id = ?,
+                 sent_at = NOW(), failed_at = NULL, error_message = NULL
+             WHERE id = ?"
+        )->execute([$result->providerMessageId, $notificationId]);
+
+        if ($notification['notification_batch_id']) {
+            $this->refreshReminderBatch((int) $notification['notification_batch_id']);
+        }
+    }
+
+    private function refreshReminderBatch(int $batchId): void
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) AS total,
+                    SUM(status = 'sent') AS sent_count,
+                    SUM(status = 'failed') AS failed_count
+             FROM thank_you_reminder_notifications
+             WHERE notification_batch_id = ?"
+        );
+        $stmt->execute([$batchId]);
+        $counts = $stmt->fetch();
+
+        $total = (int) ($counts['total'] ?? 0);
+        $sent = (int) ($counts['sent_count'] ?? 0);
+        $failed = (int) ($counts['failed_count'] ?? 0);
+
+        $status = $total > 0 && $sent === $total
+            ? 'completed'
+            : ($failed > 0 && $sent > 0
+                ? 'partial_failure'
+                : ($failed === $total && $total > 0 ? 'failed' : 'processing'));
+
+        $this->pdo->prepare(
+            'UPDATE notification_batches
+             SET status = ?, completed_at = CASE WHEN ? IN ("completed","partial_failure","failed") THEN NOW() ELSE NULL END
+             WHERE id = ?'
+        )->execute([$status, $status, $batchId]);
     }
 
     private function refreshBatch(int $batchId): void
