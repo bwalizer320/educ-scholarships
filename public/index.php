@@ -3,203 +3,212 @@
 declare(strict_types=1);
 
 use App\Auth\AuthService;
+use App\Controllers\Admin\ApplicantController;
+use App\Controllers\Admin\CycleController;
+use App\Controllers\Admin\PlanningController;
+use App\Controllers\Admin\ReviewSetupController;
 use App\Database\Connection;
 use App\Http\Csrf;
 use App\Http\Router;
+use App\Support\Flash;
+use App\Support\View;
 
-$root = require dirname(__DIR__) . '/app/bootstrap.php';
+require dirname(__DIR__) . '/app/bootstrap.php';
 
+$pdo = Connection::get();
+$auth = new AuthService($pdo);
 $router = new Router();
 
-$layout = static function (string $title, string $body, ?string $user = null): string {
-    $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
-    $userHtml = $user
-        ? '<span class="user">' . htmlspecialchars($user, ENT_QUOTES, 'UTF-8') . '</span>'
-        : '';
-
-    return <<<HTML
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{$safeTitle} | Scholarship Manager</title>
-    <style>
-        :root {
-            font-family: Arial, Helvetica, sans-serif;
-            color: #151515;
-            background: #f4f4f4;
-            --iowa-gold: #ffcd00;
-            --border: #d7d7d7;
-            --focus: #005ea8;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; line-height: 1.5; }
-        .skip { position: absolute; left: -9999px; top: 0; background: #fff; color: #000; padding: .75rem; z-index: 10; }
-        .skip:focus { left: .75rem; top: .75rem; }
-        header { background: #000; color: #fff; border-bottom: 6px solid var(--iowa-gold); }
-        .header-inner { max-width: 76rem; margin: 0 auto; padding: 1rem 1.25rem; display: flex; gap: 1rem; align-items: center; justify-content: space-between; }
-        .brand { font-weight: 700; }
-        .brand .iowa { color: var(--iowa-gold); letter-spacing: .06em; margin-right: .8rem; }
-        .user { font-size: .9rem; }
-        main { max-width: 76rem; margin: 2rem auto; padding: 0 1.25rem 3rem; }
-        .card { background: #fff; border: 1px solid var(--border); border-radius: .5rem; padding: 1.5rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin-top: 1rem; }
-        .stat { border: 1px solid var(--border); border-radius: .4rem; padding: 1rem; background: #fff; }
-        .stat strong { display: block; font-size: 1.7rem; }
-        label { display: block; font-weight: 700; margin-top: 1rem; }
-        input { width: 100%; max-width: 28rem; padding: .7rem; border: 1px solid #777; border-radius: .25rem; font: inherit; }
-        button, .button { display: inline-block; margin-top: 1rem; padding: .7rem 1rem; background: #111; color: #fff; border: 2px solid #111; border-radius: .25rem; font-weight: 700; text-decoration: none; cursor: pointer; }
-        button:hover, .button:hover { background: #333; }
-        a { color: #005ea8; }
-        a:focus, button:focus, input:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
-        .error { border-left: 4px solid #b50909; padding: .75rem 1rem; background: #fff2f2; }
-        .actions { display: flex; gap: .75rem; flex-wrap: wrap; }
-        .actions form { margin: 0; }
-        .actions button { margin-top: 0; }
-    </style>
-</head>
-<body>
-<a class="skip" href="#main">Skip to main content</a>
-<header>
-    <div class="header-inner">
-        <div class="brand"><span class="iowa">IOWA</span> College of Education Scholarship Manager</div>
-        {$userHtml}
-    </div>
-</header>
-<main id="main">
-{$body}
-</main>
-</body>
-</html>
-HTML;
-};
-
-$auth = static fn(): AuthService => new AuthService(Connection::get());
+$cycleController = new CycleController($pdo, $auth);
+$planningController = new PlanningController($pdo, $auth);
+$reviewSetupController = new ReviewSetupController($pdo, $auth);
+$applicantController = new ApplicantController($pdo, $auth);
 
 $router->get('/', static function () use ($auth): never {
-    header('Location: ' . ($auth()->check() ? '/dashboard' : '/login'));
+    header('Location: ' . ($auth->check() ? '/dashboard' : '/login'));
     exit;
 });
 
-$router->get('/login', static function () use ($layout, $auth): string {
-    if ($auth()->check()) {
+$router->get('/login', static function () use ($auth): string {
+    if ($auth->check()) {
         header('Location: /dashboard');
         exit;
     }
 
-    $token = htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8');
+    $body = Flash::render()
+        . '<section class="card" aria-labelledby="login-title">'
+        . '<h1 id="login-title">Sign in</h1>'
+        . '<p>Use the local account during testing. Production authentication can be switched to HawkID/SSO by configuration.</p>'
+        . '<form method="post" action="/login">'
+        . View::csrfField()
+        . '<label for="email">Email</label>'
+        . '<input id="email" name="email" type="email" autocomplete="username" required>'
+        . '<label for="password">Password</label>'
+        . '<input id="password" name="password" type="password" autocomplete="current-password" required>'
+        . '<div class="form-actions"><button type="submit">Sign in</button></div>'
+        . '</form></section>';
 
-    $body = <<<HTML
-<section class="card" aria-labelledby="login-title">
-    <h1 id="login-title">Sign in</h1>
-    <p>Use the local development account. Production authentication will use HawkID/SSO when configured.</p>
-    <form method="post" action="/login">
-        <input type="hidden" name="_csrf" value="{$token}">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" required>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <button type="submit">Sign in</button>
-    </form>
-</section>
-HTML;
-
-    return $layout('Sign in', $body);
+    return View::layout('Sign in', $body);
 });
 
-$router->post('/login', static function () use ($layout, $auth): string {
+$router->post('/login', static function () use ($auth): never {
     try {
         Csrf::assertValid($_POST['_csrf'] ?? null);
-    } catch (Throwable) {
-        http_response_code(419);
-        return $layout('Session expired', '<div class="error"><h1>Session expired</h1><p>Return to the sign-in page and try again.</p></div>');
-    }
 
-    if ($auth()->attempt((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''))) {
+        if (!$auth->attempt((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''))) {
+            Flash::error('Sign-in failed. Check the email and password.');
+            header('Location: /login');
+            exit;
+        }
+
         header('Location: /dashboard');
         exit;
+    } catch (\Throwable $e) {
+        Flash::error($e->getMessage());
+        header('Location: /login');
+        exit;
     }
-
-    http_response_code(422);
-    $token = htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8');
-
-    $body = <<<HTML
-<div class="error" role="alert"><strong>Sign-in failed.</strong> Check the email and password.</div>
-<section class="card" aria-labelledby="login-title">
-    <h1 id="login-title">Sign in</h1>
-    <form method="post" action="/login">
-        <input type="hidden" name="_csrf" value="{$token}">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" required>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <button type="submit">Sign in</button>
-    </form>
-</section>
-HTML;
-
-    return $layout('Sign in', $body);
 });
 
 $router->post('/logout', static function () use ($auth): never {
     Csrf::assertValid($_POST['_csrf'] ?? null);
-    $auth()->logout();
+    $auth->logout();
     header('Location: /login');
     exit;
 });
 
-$router->get('/dashboard', static function () use ($layout, $auth): string {
-    $service = $auth();
-
-    if (!$service->check()) {
+$router->get('/dashboard', static function () use ($auth, $pdo): string {
+    if (!$auth->check()) {
         header('Location: /login');
         exit;
     }
 
-    $pdo = Connection::get();
-    $cycle = $pdo->query("SELECT id, label, status FROM academic_cycles WHERE is_current = 1 LIMIT 1")->fetch();
+    $cycle = $pdo->query(
+        'SELECT * FROM academic_cycles WHERE is_current = 1 LIMIT 1'
+    )->fetch() ?: null;
 
-    $cycleLabel = $cycle
-        ? htmlspecialchars((string) $cycle['label'], ENT_QUOTES, 'UTF-8')
-        : 'No current cycle';
+    $cycleId = $cycle ? (int) $cycle['id'] : 0;
+    $scholarships = 0;
+    $renewals = 0;
+    $applicants = 0;
+    $reviewUnits = 0;
+    $unresolvedMappings = (int) $pdo->query(
+        "SELECT COUNT(*) FROM program_mapping_queue WHERE status = 'unresolved'"
+    )->fetchColumn();
 
-    $cycleStatus = $cycle
-        ? htmlspecialchars(str_replace('_', ' ', (string) $cycle['status']), ENT_QUOTES, 'UTF-8')
-        : 'setup required';
+    if ($cycleId > 0) {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM cycle_scholarships WHERE cycle_id = ?');
+        $stmt->execute([$cycleId]);
+        $scholarships = (int) $stmt->fetchColumn();
 
-    $scholarships = (int) $pdo->query('SELECT COUNT(*) FROM scholarships WHERE active = 1')->fetchColumn();
-    $programs = (int) $pdo->query("SELECT COUNT(*) FROM org_units WHERE unit_type = 'program' AND active = 1")->fetchColumn();
-    $token = htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8');
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM renewal_candidates
+             WHERE cycle_id = ? AND status IN ('pending_amount','pending_review','hold')"
+        );
+        $stmt->execute([$cycleId]);
+        $renewals = (int) $stmt->fetchColumn();
 
-    $body = <<<HTML
-<div class="actions" style="justify-content:space-between;align-items:center">
-    <div>
-        <h1>Scholarship Manager</h1>
-        <p><strong>{$cycleLabel}</strong> &middot; {$cycleStatus}</p>
-    </div>
-    <form method="post" action="/logout">
-        <input type="hidden" name="_csrf" value="{$token}">
-        <button type="submit">Sign out</button>
-    </form>
-</div>
-<div class="grid" aria-label="System summary">
-    <section class="stat"><span>Active scholarships</span><strong>{$scholarships}</strong></section>
-    <section class="stat"><span>Canonical programs</span><strong>{$programs}</strong></section>
-    <section class="stat"><span>Current cycle</span><strong>{$cycleLabel}</strong></section>
-</div>
-<section class="card" style="margin-top:1rem">
-    <h2>Foundation status</h2>
-    <p>The core annual planning, applicant review, eligibility, renewal, enrollment, award, notification, and thank-you data model is now installed in the codebase. Administrative workflow screens are next.</p>
-</section>
-HTML;
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM applications WHERE cycle_id = ? AND active = 1');
+        $stmt->execute([$cycleId]);
+        $applicants = (int) $stmt->fetchColumn();
 
-    return $layout('Dashboard', $body, $service->displayName());
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM cycle_review_units
+             WHERE cycle_id = ? AND status NOT IN ('submitted','closed','resubmitted')"
+        );
+        $stmt->execute([$cycleId]);
+        $reviewUnits = (int) $stmt->fetchColumn();
+    }
+
+    $cycleLabel = $cycle ? View::e($cycle['label']) : 'No current cycle';
+    $cycleStatus = $cycle ? View::status($cycle['status']) : View::status('setup');
+    $token = View::csrfField();
+
+    $setupAction = $cycle
+        ? '<a class="button" href="/admin/cycles/' . $cycleId . '/setup">Continue cycle setup</a>'
+        : '<a class="button" href="/admin/cycles">Create academic cycle</a>';
+
+    $body = Flash::render()
+        . '<div class="page-header"><div><h1>Scholarship Manager</h1><p><strong>' . $cycleLabel . '</strong> · ' . $cycleStatus . '</p></div>'
+        . '<form method="post" action="/logout">' . $token . '<button class="secondary" type="submit">Sign out</button></form></div>'
+        . '<div class="grid" aria-label="Current cycle summary">'
+        . '<section class="stat"><span>Scholarships</span><strong>' . $scholarships . '</strong></section>'
+        . '<section class="stat"><span>Renewals needing review</span><strong>' . $renewals . '</strong></section>'
+        . '<section class="stat"><span>Applicants</span><strong>' . $applicants . '</strong></section>'
+        . '<section class="stat"><span>Review units outstanding</span><strong>' . $reviewUnits . '</strong></section>'
+        . '<section class="stat"><span>Program mappings unresolved</span><strong>' . $unresolvedMappings . '</strong></section>'
+        . '</div>'
+        . '<section class="card" style="margin-top:1rem"><h2>Current workflow</h2><div class="actions">'
+        . $setupAction
+        . '<a class="button secondary" href="/admin/planning">Annual planning</a>'
+        . '<a class="button secondary" href="/admin/renewals">Renewals</a>'
+        . '<a class="button secondary" href="/admin/allocations">Allocations</a>'
+        . '<a class="button secondary" href="/admin/applicants">Applicants</a>'
+        . '</div></section>';
+
+    return View::layout(
+        'Dashboard',
+        $body,
+        $auth->displayName(),
+        $auth->staffRole(),
+        $cycle['label'] ?? null
+    );
 });
 
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$response = $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $path);
+/* Academic cycle setup */
+$router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
+$router->post('/admin/cycles', fn(array $p = []): never => $cycleController->create());
+$router->post('/admin/cycles/{id}/current', fn(array $p): never => $cycleController->makeCurrent($p));
+$router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleController->setup($p));
+$router->post('/admin/cycles/{id}/checklist/{item}', fn(array $p): never => $cycleController->checklist($p));
+$router->post('/admin/cycles/{id}/dates', fn(array $p): never => $cycleController->saveDates($p));
 
-if (is_string($response)) {
-    echo $response;
+/* Annual planning and renewals */
+$router->get('/admin/planning', fn(array $p = []): string => $planningController->planning());
+$router->get('/admin/planning/{id}', fn(array $p): string => $planningController->editPlan($p));
+$router->post('/admin/planning/{id}', fn(array $p): never => $planningController->savePlan($p));
+$router->get('/admin/renewals', fn(array $p = []): string => $planningController->renewals());
+$router->post('/admin/renewals/{id}', fn(array $p): never => $planningController->renewalAction($p));
+
+/* Allocations, reviewers and rubrics */
+$router->get('/admin/allocations', fn(array $p = []): string => $reviewSetupController->allocations());
+$router->post('/admin/allocations', fn(array $p = []): never => $reviewSetupController->createAllocation());
+$router->get('/admin/allocations/{id}', fn(array $p): string => $reviewSetupController->editAllocation($p));
+$router->post('/admin/allocations/{id}', fn(array $p): never => $reviewSetupController->saveAllocation($p));
+$router->get('/admin/reviewers', fn(array $p = []): string => $reviewSetupController->reviewers());
+$router->post('/admin/reviewers', fn(array $p = []): never => $reviewSetupController->saveReviewer());
+$router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupController->rubrics());
+$router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
+$router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
+$router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Applicant import and official program mapping */
+$router->get('/admin/applicants', fn(array $p = []): string => $applicantController->index());
+$router->post('/admin/applicants/imports', fn(array $p = []): never => $applicantController->stageImport());
+$router->get('/admin/applicants/imports/{id}/map', fn(array $p): string => $applicantController->mapping($p));
+$router->post('/admin/applicants/imports/{id}/process', fn(array $p): never => $applicantController->process($p));
+$router->get('/admin/applicants/mappings', fn(array $p = []): string => $applicantController->mappings());
+$router->post('/admin/applicants/mappings/{id}', fn(array $p): never => $applicantController->resolveMapping($p));
+$router->get('/admin/applicants/{id}', fn(array $p): string => $applicantController->applicant($p));
+
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+try {
+    $response = $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $path);
+    if (is_string($response)) {
+        echo $response;
+    }
+} catch (\Throwable $e) {
+    http_response_code(500);
+
+    $message = (getenv('APP_ENV') ?: 'development') === 'production'
+        ? 'An unexpected error occurred.'
+        : $e->getMessage();
+
+    echo View::layout(
+        'Application error',
+        '<div class="error" role="alert"><h1>Application error</h1><p>' . View::e($message) . '</p></div>',
+        $auth->check() ? $auth->displayName() : null,
+        $auth->check() ? $auth->staffRole() : null
+    );
 }
