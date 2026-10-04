@@ -192,6 +192,7 @@ HTML;
             . '    <a href="/admin/cycles">Cycles</a>' . "\n"
             . '    <a href="/admin/cycle-report">Cycle Report</a>' . "\n"
             . '    <a href="/admin/history-imports">History Import</a>' . "\n"
+            . '    <a href="/admin/scholarships">Scholarships</a>' . "\n"
             . '    <a href="/admin/planning">Planning</a>' . "\n"
             . '    <a href="/admin/renewals">Renewals</a>' . "\n"
             . '    <a href="/admin/allocations">Allocations</a>' . "\n"
