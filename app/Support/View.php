@@ -181,33 +181,36 @@ HTML;
 HTML;
         }
 
-        return <<<'HTML'
-<nav aria-label="Primary">
-    <a href="/dashboard">Dashboard</a>
-    <a href="/review">Program Review</a>
-    <a href="/thank-yous/review">Thank-you Review</a>
-    <a href="/admin/cycles">Cycles</a>
-    <a href="/admin/cycle-report">Cycle Report</a>
-    <a href="/admin/history-imports">History Import</a>
-    <a href="/admin/planning">Planning</a>
-    <a href="/admin/renewals">Renewals</a>
-    <a href="/admin/allocations">Allocations</a>
-    <a href="/admin/reviewers">Reviewers</a>
-    <a href="/admin/users">Users</a>
-    <a href="/admin/rubrics">Rubrics</a>
-    <a href="/admin/applicants">Applicants</a>
-    <a href="/admin/enrollment">Enrollment</a>
-    <a href="/dean/recommendations">Dean Review</a>
-    <a href="/dean/reallocation">Reallocation</a>
-    <a href="/dean/verification">Verification</a>
-    <a href="/admin/distribution-requests">Distribution Requests</a>
-    <a href="/admin/thank-yous">Thank-you Letters</a>
-    <a href="/admin/thank-you-reminders">Thank-you Reminders</a>
-    <a href="/admin/thank-you-reviewers">Thank-you Reviewers</a>
-    <a href="/notifications/ready">Notify</a>
-    <a href="/notifications/history">Notification History</a>
-    <a href="/admin/templates">Templates</a>
-</nav>
-HTML;
+        $testMail = (Env::get('APP_ENV', 'development') ?? 'development') !== 'production'
+            ? '    <a href="/admin/test-mail">Testing Mail</a>' . "\n"
+            : '';
+
+        return '<nav aria-label="Primary">' . "\n"
+            . '    <a href="/dashboard">Dashboard</a>' . "\n"
+            . '    <a href="/review">Program Review</a>' . "\n"
+            . '    <a href="/thank-yous/review">Thank-you Review</a>' . "\n"
+            . '    <a href="/admin/cycles">Cycles</a>' . "\n"
+            . '    <a href="/admin/cycle-report">Cycle Report</a>' . "\n"
+            . '    <a href="/admin/history-imports">History Import</a>' . "\n"
+            . '    <a href="/admin/planning">Planning</a>' . "\n"
+            . '    <a href="/admin/renewals">Renewals</a>' . "\n"
+            . '    <a href="/admin/allocations">Allocations</a>' . "\n"
+            . '    <a href="/admin/reviewers">Reviewers</a>' . "\n"
+            . '    <a href="/admin/users">Users</a>' . "\n"
+            . '    <a href="/admin/rubrics">Rubrics</a>' . "\n"
+            . '    <a href="/admin/applicants">Applicants</a>' . "\n"
+            . '    <a href="/admin/enrollment">Enrollment</a>' . "\n"
+            . '    <a href="/dean/recommendations">Dean Review</a>' . "\n"
+            . '    <a href="/dean/reallocation">Reallocation</a>' . "\n"
+            . '    <a href="/dean/verification">Verification</a>' . "\n"
+            . '    <a href="/admin/distribution-requests">Distribution Requests</a>' . "\n"
+            . '    <a href="/admin/thank-yous">Thank-you Letters</a>' . "\n"
+            . '    <a href="/admin/thank-you-reminders">Thank-you Reminders</a>' . "\n"
+            . '    <a href="/admin/thank-you-reviewers">Thank-you Reviewers</a>' . "\n"
+            . '    <a href="/notifications/ready">Notify</a>' . "\n"
+            . '    <a href="/notifications/history">Notification History</a>' . "\n"
+            . '    <a href="/admin/templates">Templates</a>' . "\n"
+            . $testMail
+            . '</nav>';
     }
 }
