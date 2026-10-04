@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Auth\AuthService;
 use App\Controllers\Admin\ApplicantController;
 use App\Controllers\Admin\CycleController;
+use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReviewSetupController;
 use App\Database\Connection;
@@ -20,6 +21,7 @@ $auth = new AuthService($pdo);
 $router = new Router();
 
 $cycleController = new CycleController($pdo, $auth);
+$enrollmentController = new EnrollmentController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
@@ -184,6 +186,10 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Enrollment snapshots */
+$router->get('/admin/enrollment', fn(array $p = []): string => $enrollmentController->index());
+$router->post('/admin/enrollment', fn(array $p = []): never => $enrollmentController->import());
 
 /* Staff users */
 $router->get('/admin/users', fn(array $p = []): string => $userController->index());
