@@ -172,6 +172,7 @@ HTML;
     <a href="/admin/renewals">Renewals</a>
     <a href="/admin/allocations">Allocations</a>
     <a href="/admin/reviewers">Reviewers</a>
+    <a href="/admin/users">Users</a>
     <a href="/admin/rubrics">Rubrics</a>
     <a href="/admin/applicants">Applicants</a>
 </nav>
