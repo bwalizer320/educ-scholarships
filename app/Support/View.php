@@ -176,6 +176,8 @@ HTML;
     <a href="/admin/rubrics">Rubrics</a>
     <a href="/admin/applicants">Applicants</a>
     <a href="/admin/enrollment">Enrollment</a>
+    <a href="/dean/recommendations">Dean Review</a>
+    <a href="/dean/verification">Verification</a>
 </nav>
 HTML;
     }
