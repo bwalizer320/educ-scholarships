@@ -22,6 +22,7 @@ use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReallocationController;
 use App\Controllers\Admin\NotificationController;
 use App\Controllers\Admin\TemplateController;
+use App\Controllers\Admin\TestMailController;
 use App\Controllers\Admin\ReviewSetupController;
 use App\Database\Connection;
 use App\Http\Csrf;
@@ -55,6 +56,7 @@ $planningController = new PlanningController($pdo, $auth);
 $reallocationController = new ReallocationController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
+$testMailController = new TestMailController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $recipientAdminController = new RecipientAdminController($pdo, $auth);
 $thankYouAdminController = new ThankYouAdminController($pdo, $auth);
@@ -293,6 +295,7 @@ $router->post('/admin/templates/email', fn(array $p = []): never => $templateCon
 $router->get('/notifications/ready', fn(array $p = []): string => $notificationController->ready());
 $router->post('/notifications/queue', fn(array $p = []): never => $notificationController->queue());
 $router->get('/notifications/history', fn(array $p = []): string => $notificationController->history());
+$router->get('/admin/test-mail', fn(array $p = []): string => $testMailController->index());
 
 /* Dean's Office reallocation */
 $router->get('/dean/reallocation', fn(array $p = []): string => $reallocationController->index());
