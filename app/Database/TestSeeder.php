@@ -406,8 +406,20 @@ final class TestSeeder
 
         if($importId===false){
             $admin=(int)$this->pdo->query(
-                "SELECT id FROM users WHERE staff_role='system_admin' AND active=1 ORDER BY id LIMIT 1"
+                "SELECT id FROM users
+                 WHERE person_type='staff' AND active=1
+                 ORDER BY CASE staff_role
+                    WHEN 'system_admin' THEN 1
+                    WHEN 'deans_office_admin' THEN 2
+                    WHEN 'program_coordinator' THEN 3
+                    ELSE 4
+                 END, id
+                 LIMIT 1"
             )->fetchColumn();
+
+            if ($admin < 1) {
+                throw new RuntimeException('At least one active staff user is required to seed test applicants.');
+            }
             $this->pdo->prepare(
                 'INSERT INTO application_imports (
                     cycle_id,filename,mapping_profile,status,row_count,inserted_count,
