@@ -60,8 +60,9 @@ final class CycleRolloverService
             $this->createTerms($newCycleId, $startYear, $endYear);
             $this->createChecklist($newCycleId);
             $this->copyCycleScholarships($sourceCycleId, $newCycleId);
-            $this->copyReviewUnits($sourceCycleId, $newCycleId, $prior['program_review_due_at']);
+            $this->copyReviewUnits($sourceCycleId, $newCycleId);
             $this->copyRubrics($sourceCycleId, $newCycleId);
+            $this->createRenewalCandidates($sourceCycleId, $newCycleId);
 
             $this->pdo->commit();
 
@@ -80,21 +81,8 @@ final class CycleRolloverService
              VALUES (?, ?, ?, ?, ?, 1)'
         );
 
-        $stmt->execute([
-            $cycleId,
-            'fall_' . $startYear,
-            'Fall ' . $startYear,
-            'fall',
-            $startYear,
-        ]);
-
-        $stmt->execute([
-            $cycleId,
-            'spring_' . $endYear,
-            'Spring ' . $endYear,
-            'spring',
-            $endYear,
-        ]);
+        $stmt->execute([$cycleId, 'fall_' . $startYear, 'Fall ' . $startYear, 'fall', $startYear]);
+        $stmt->execute([$cycleId, 'spring_' . $endYear, 'Spring ' . $endYear, 'spring', $endYear]);
     }
 
     private function createChecklist(int $cycleId): void
@@ -127,22 +115,18 @@ final class CycleRolloverService
         $stmt->execute([$newCycleId, $sourceCycleId]);
     }
 
-    private function copyReviewUnits(
-        int $sourceCycleId,
-        int $newCycleId,
-        ?string $sourceDueAt
-    ): void {
-        $dueAt = $sourceDueAt;
-
+    private function copyReviewUnits(int $sourceCycleId, int $newCycleId): void
+    {
         $stmt = $this->pdo->prepare(
             "INSERT INTO cycle_review_units (
                 cycle_id, org_unit_id, primary_reviewer_user_id, review_method, due_at, status
              )
-             SELECT ?, org_unit_id, primary_reviewer_user_id, review_method, COALESCE(?, due_at), 'not_started'
+             SELECT ?, org_unit_id, primary_reviewer_user_id, review_method,
+                    DATE_ADD(due_at, INTERVAL 1 YEAR), 'not_started'
              FROM cycle_review_units
              WHERE cycle_id = ?"
         );
-        $stmt->execute([$newCycleId, $dueAt, $sourceCycleId]);
+        $stmt->execute([$newCycleId, $sourceCycleId]);
     }
 
     private function copyRubrics(int $sourceCycleId, int $newCycleId): void
@@ -188,6 +172,85 @@ final class CycleRolloverService
                     $item['sort_order'],
                 ]);
             }
+        }
+    }
+
+    private function createRenewalCandidates(int $sourceCycleId, int $newCycleId): void
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                a.id AS prior_award_id,
+                a.student_id,
+                a.total_amount AS prior_award_amount,
+                cs.scholarship_id,
+                sar.max_total_award_years,
+                COALESCE(ca.org_unit_id, prior_rc.org_unit_id, app.org_unit_id) AS org_unit_id,
+                (
+                    SELECT COUNT(*)
+                    FROM awards history
+                    JOIN cycle_scholarships history_cs ON history_cs.id = history.cycle_scholarship_id
+                    WHERE history.student_id = a.student_id
+                      AND history_cs.scholarship_id = cs.scholarship_id
+                      AND history.status <> 'cancelled'
+                ) AS prior_award_years
+             FROM awards a
+             JOIN cycle_scholarships cs ON cs.id = a.cycle_scholarship_id
+             JOIN scholarship_award_rules sar
+               ON sar.intent_version_id = cs.intent_version_id
+              AND sar.renewable = 1
+             LEFT JOIN cycle_allocations ca ON ca.id = a.cycle_allocation_id
+             LEFT JOIN renewal_candidates prior_rc ON prior_rc.id = a.renewal_candidate_id
+             LEFT JOIN applications app
+               ON app.cycle_id = a.cycle_id
+              AND app.student_id = a.student_id
+             WHERE a.cycle_id = ?
+               AND a.status IN ('approved','ready_to_notify','notified')"
+        );
+        $stmt->execute([$sourceCycleId]);
+
+        $newCycleScholarship = $this->pdo->prepare(
+            'SELECT id FROM cycle_scholarships WHERE cycle_id = ? AND scholarship_id = ? LIMIT 1'
+        );
+
+        $insert = $this->pdo->prepare(
+            "INSERT INTO renewal_candidates (
+                cycle_id, scholarship_id, cycle_scholarship_id, student_id,
+                prior_award_id, org_unit_id, prior_award_amount, renewal_year_number,
+                proposed_current_amount, status
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending_amount')"
+        );
+
+        foreach ($stmt->fetchAll() as $row) {
+            $maxYears = $row['max_total_award_years'] !== null
+                ? (int) $row['max_total_award_years']
+                : null;
+            $priorYears = (int) $row['prior_award_years'];
+
+            if ($maxYears !== null && $priorYears >= $maxYears) {
+                continue;
+            }
+
+            if ($row['org_unit_id'] === null) {
+                continue;
+            }
+
+            $newCycleScholarship->execute([$newCycleId, (int) $row['scholarship_id']]);
+            $newCycleScholarshipId = $newCycleScholarship->fetchColumn();
+
+            if ($newCycleScholarshipId === false) {
+                continue;
+            }
+
+            $insert->execute([
+                $newCycleId,
+                (int) $row['scholarship_id'],
+                (int) $newCycleScholarshipId,
+                (int) $row['student_id'],
+                (int) $row['prior_award_id'],
+                (int) $row['org_unit_id'],
+                $row['prior_award_amount'],
+                $priorYears + 1,
+            ]);
         }
     }
 }
