@@ -95,6 +95,9 @@ final class TestSeeder
                 $this->ensureApplication($cycleId, $programId, ...$student);
             }
 
+            $this->ensureEnrollmentSnapshot($cycleId, $programId, $coordinatorId);
+            $this->ensureTemplates();
+
             $recipient = $this->ensureRecipientAward(
                 $cycleId,
                 $cycleScholarships[0],
@@ -568,6 +571,153 @@ final class TestSeeder
             'email'=>$email,
             'award_public_id'=>$award['public_id'],
         ];
+    }
+
+
+    private function ensureEnrollmentSnapshot(int $cycleId, int $programId, int $userId): void
+    {
+        $termStmt = $this->pdo->prepare(
+            "SELECT id FROM academic_terms WHERE cycle_id = ? AND season = 'fall' LIMIT 1"
+        );
+        $termStmt->execute([$cycleId]);
+        $termId = (int) $termStmt->fetchColumn();
+
+        $existing = $this->pdo->prepare(
+            "SELECT id FROM enrollment_imports
+             WHERE cycle_id = ? AND academic_term_id = ?
+               AND filename = 'test-enrollment.xls'
+               AND status = 'completed'
+             LIMIT 1"
+        );
+        $existing->execute([$cycleId, $termId]);
+        $importId = $existing->fetchColumn();
+
+        if ($importId === false) {
+            $insert = $this->pdo->prepare(
+                "INSERT INTO enrollment_imports (
+                    cycle_id, academic_term_id, filename, status,
+                    is_complete_snapshot, row_count, student_count,
+                    imported_by_user_id, completed_at
+                 ) VALUES (?, ?, 'test-enrollment.xls', 'completed', 1, 3, 3, ?, NOW())"
+            );
+            $insert->execute([$cycleId, $termId, $userId]);
+            $importId = (int) $this->pdo->lastInsertId();
+        }
+
+        $offeringStmt = $this->pdo->prepare(
+            'SELECT id, pgms_program_descr, pgms_objective_key, pgms_sub_program_descr
+             FROM program_offerings
+             WHERE org_unit_id = ?
+             ORDER BY id LIMIT 1'
+        );
+        $offeringStmt->execute([$programId]);
+        $offering = $offeringStmt->fetch();
+
+        $students = $this->pdo->query(
+            "SELECT * FROM students
+             WHERE university_id IN ('00000001','00000002','00000003')
+             ORDER BY university_id"
+        )->fetchAll();
+
+        $check = $this->pdo->prepare(
+            'SELECT id FROM enrollment_records WHERE enrollment_import_id = ? AND student_id = ? LIMIT 1'
+        );
+        $insertRecord = $this->pdo->prepare(
+            "INSERT INTO enrollment_records (
+                enrollment_import_id, student_id, session_descr, university_id,
+                standard_full_name, email, pgms_program_descr, pgms_objective_key,
+                is_primary, enrollment_status, cum_ui_graded_gpa, enrolled_credit_hours,
+                pgms_sub_program_descr, residency_state_descr, true_residency_descr,
+                program_offering_id, org_unit_id, raw_json
+             ) VALUES (?, ?, 'Fall 2027', ?, ?, ?, ?, ?, 1, 'ENROLLED', ?, 9.000, ?, ?, ?, ?, ?, ?)"
+        );
+
+        foreach ($students as $student) {
+            $check->execute([$importId, $student['id']]);
+            if ($check->fetchColumn()) {
+                continue;
+            }
+
+            $appStmt = $this->pdo->prepare(
+                'SELECT gpa, residency_state FROM applications WHERE cycle_id = ? AND student_id = ? LIMIT 1'
+            );
+            $appStmt->execute([$cycleId, $student['id']]);
+            $app = $appStmt->fetch() ?: ['gpa'=>null,'residency_state'=>null];
+
+            $insertRecord->execute([
+                $importId,
+                $student['id'],
+                $student['university_id'],
+                $student['display_name'],
+                $student['email'],
+                $offering['pgms_program_descr'] ?? 'School Counseling',
+                $offering['pgms_objective_key'] ?? 'MA',
+                $app['gpa'],
+                $offering['pgms_sub_program_descr'] ?? null,
+                $app['residency_state'],
+                $app['residency_state'] ? 'Resident' : null,
+                $offering['id'] ?? null,
+                $programId,
+                json_encode(['seed'=>'test','enrolled_credit_hours'=>9], JSON_THROW_ON_ERROR),
+            ]);
+        }
+    }
+
+    private function ensureTemplates(): void
+    {
+        $letters = [
+            'new_award' => [
+                'Testing New Award Letter',
+                '<p>{{letter_date}}</p><p>Dear {{student_first_name}},</p><p>Congratulations. You have been selected for the <strong>{{scholarship_name}}</strong> for {{academic_year}} in the amount of {{award_total}}.</p><p>Fall: {{fall_amount}}<br>Spring: {{spring_amount}}</p><p>{{student_teaching_language}}</p><p>Sincerely,<br>{{signature_name}}<br>{{signature_title}}</p>'
+            ],
+            'renewal' => [
+                'Testing Renewal Award Letter',
+                '<p>{{letter_date}}</p><p>Dear {{student_first_name}},</p><p>Your <strong>{{scholarship_name}}</strong> has been renewed for {{academic_year}} in the amount of {{award_total}}.</p><p>Sincerely,<br>{{signature_name}}<br>{{signature_title}}</p>'
+            ],
+        ];
+
+        foreach ($letters as $type => [$name, $html]) {
+            $stmt = $this->pdo->prepare(
+                'SELECT id FROM letter_templates WHERE template_type = ? AND active = 1 LIMIT 1'
+            );
+            $stmt->execute([$type]);
+            if (!$stmt->fetchColumn()) {
+                $this->pdo->prepare(
+                    'INSERT INTO letter_templates (
+                        template_type, name, html_template, active, version_number
+                     ) VALUES (?, ?, ?, 1, 1)'
+                )->execute([$type,$name,$html]);
+            }
+        }
+
+        $emails = [
+            'award_new' => [
+                'Your {{scholarship_name}} scholarship award',
+                '<p>Dear {{student_first_name}},</p><p>Congratulations on your {{scholarship_name}} award of {{award_total}}.</p><p>Access your recipient portal here: {{portal_access_url}}</p>'
+            ],
+            'award_renewal' => [
+                'Your renewed {{scholarship_name}} award',
+                '<p>Dear {{student_first_name}},</p><p>Your {{scholarship_name}} has been renewed for {{academic_year}}.</p><p>Access your recipient portal here: {{portal_access_url}}</p>'
+            ],
+            'thank_you_reminder' => [
+                'Reminder: thank-you letter for {{scholarship_name}}',
+                '<p>Dear {{student_first_name}},</p><p>Your thank-you letter for the {{scholarship_name}} is still outstanding. The deadline is {{thank_you_deadline}}.</p>'
+            ],
+        ];
+
+        foreach ($emails as $type => [$subject,$html]) {
+            $stmt = $this->pdo->prepare(
+                'SELECT id FROM email_templates WHERE template_type = ? AND active = 1 LIMIT 1'
+            );
+            $stmt->execute([$type]);
+            if (!$stmt->fetchColumn()) {
+                $this->pdo->prepare(
+                    'INSERT INTO email_templates (
+                        template_type, subject_template, html_template, active, version_number
+                     ) VALUES (?, ?, ?, 1, 1)'
+                )->execute([$type,$subject,$html]);
+            }
+        }
     }
 
 }
