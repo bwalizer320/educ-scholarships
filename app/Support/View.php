@@ -122,6 +122,7 @@ final class View
         .cycle-pill::before { content: ""; width: .42rem; height: .42rem; border-radius: 50%; background: var(--iowa-gold); }
         .header-logout { width: 2.15rem; height: 2.15rem; min-height: 0; padding: 0; border-radius: .6rem; border: 1px solid #41454b; background: #15171a; color: #fff; box-shadow: none; }
         .header-logout:hover { background: #24272b; border-color: #5a5f66; }
+        .header-logout svg { width: 1rem; height: 1rem; }
         .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 
         .app-shell { width: 100%; margin: 0; display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); min-height: calc(100vh - 60px); }
@@ -191,6 +192,7 @@ final class View
         .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
         .actions form { margin: 0; }
         button, .button { display: inline-flex; align-items: center; justify-content: center; gap: .42rem; min-height: 2.42rem; padding: .52rem .82rem; background: #111; color: #fff; border: 1px solid #111; border-radius: .58rem; font-weight: 720; text-decoration: none; cursor: pointer; font: inherit; font-size: .84rem; line-height: 1.2; box-shadow: 0 1px 1px rgba(0,0,0,.04); transition: background .12s ease, border-color .12s ease, box-shadow .12s ease; }
+        button svg, .button svg { width: .95rem; height: .95rem; flex: 0 0 .95rem; }
         button.secondary, .button.secondary { background: #fff; color: #25282d; border-color: var(--border-strong); }
         button.small, .button.small { min-height: 2rem; padding: .35rem .6rem; font-size: .78rem; }
         button:hover, .button:hover { background: #2a2a2a; border-color: #2a2a2a; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.10); }
