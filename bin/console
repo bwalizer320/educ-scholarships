@@ -64,11 +64,13 @@ switch ($command) {
         fwrite(
             STDOUT,
             sprintf(
-                "Loaded fake test data for cycle %d: %d scholarships, %d students. Reviewer login: %s / %s\n",
+                "Loaded fake test data for cycle %d: %d scholarships, %d students. Reviewer: %s / %s. Recipient: %s / %s\n",
                 $result['cycle_id'],
                 $result['scholarships'],
                 $result['students'],
                 $result['coordinator_email'],
+                $result['test_password'],
+                $result['recipient_email'],
                 $result['test_password']
             )
         );
