@@ -9,7 +9,7 @@ use App\Database\Connection;
 use App\Database\Migrator;
 use App\Database\TestSeeder;
 use App\Support\Env;
-use App\Mail\SmtpMailProvider;
+use App\Mail\MailProviderFactory;
 use App\Services\Notifications\MailJobWorker;
 use App\Storage\LocalFileStorage;
 
@@ -79,7 +79,7 @@ switch ($command) {
     case 'jobs:work':
         $worker = new MailJobWorker(
             Connection::get(),
-            new SmtpMailProvider(),
+            MailProviderFactory::make(),
             new LocalFileStorage()
         );
         $processed = 0;
