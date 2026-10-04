@@ -265,7 +265,7 @@ final class ReviewController
                 : '';
 
             $candidateRows .= '<tr>'
-                . '<td><strong>' . View::e($application['display_name']) . '</strong><br><span class="muted">'
+                . '<td><a href="/review/' . $orgUnitId . '/applicants/' . (int) $application['id'] . '"><strong>' . View::e($application['display_name']) . '</strong></a><br><span class="muted">'
                 . View::e($application['university_id']) . '</span></td>'
                 . '<td>' . View::e($application['gpa'] ?? '—') . '</td>'
                 . '<td>' . View::status($assessment['status'])
@@ -420,6 +420,91 @@ final class ReviewController
         }
 
         $this->redirect('/review/' . $orgUnitId . '/allocation/' . $allocationId);
+    }
+
+    public function applicant(array $params): string
+    {
+        $this->requireStaff();
+        $cycle = $this->requireCurrentCycle();
+        $orgUnitId = (int) ($params['org'] ?? 0);
+        $applicationId = (int) ($params['application'] ?? 0);
+
+        $this->assertScope($orgUnitId, (int) $cycle['id']);
+
+        $stmt = $this->pdo->prepare(
+            "SELECT a.*, st.display_name, st.university_id, st.email,
+                    ou.name AS program_name,
+                    po.pgms_objective_key, po.pgms_sub_program_descr
+             FROM applications a
+             JOIN students st ON st.id = a.student_id
+             LEFT JOIN org_units ou ON ou.id = a.org_unit_id
+             LEFT JOIN program_offerings po ON po.id = a.program_offering_id
+             WHERE a.id = ? AND a.cycle_id = ? AND a.org_unit_id = ?"
+        );
+        $stmt->execute([$applicationId, (int) $cycle['id'], $orgUnitId]);
+        $application = $stmt->fetch();
+
+        if (!$application) {
+            http_response_code(404);
+            throw new RuntimeException('Applicant not found in this review unit.');
+        }
+
+        $responses = $application['application_responses_json']
+            ? json_decode((string) $application['application_responses_json'], true)
+            : [];
+        $responses = is_array($responses) ? $responses : [];
+
+        $responseRows = '';
+        foreach ($responses as $question => $answer) {
+            if (is_array($answer)) {
+                $answer = implode(', ', array_map('strval', $answer));
+            } elseif (is_bool($answer)) {
+                $answer = $answer ? 'Yes' : 'No';
+            } elseif ($answer === null || trim((string) $answer) === '') {
+                continue;
+            }
+
+            $responseRows .= '<tr><th scope="row">' . View::e((string) $question) . '</th><td>'
+                . nl2br(View::e((string) $answer)) . '</td></tr>';
+        }
+
+        if ($responseRows === '') {
+            $responseRows = '<tr><td>No additional application responses were included in the imported file.</td></tr>';
+        }
+
+        $normalized = [
+            'Program' => $application['program_name'] ?? null,
+            'Degree / objective' => $application['pgms_objective_key'] ?? $application['degree_objective'] ?? null,
+            'Subprogram / track' => $application['pgms_sub_program_descr'] ?? null,
+            'Classification' => $application['classification'] ?? null,
+            'GPA' => $application['gpa'] ?? null,
+            'Residency state' => $application['residency_state'] ?? null,
+            'Residency county' => $application['residency_county'] ?? null,
+            'Citizenship country' => $application['citizenship_country'] ?? null,
+            'First generation' => $application['first_generation'] === null
+                ? null
+                : ((int) $application['first_generation'] === 1 ? 'Yes' : 'No'),
+            'Financial need' => $application['financial_need'] === null
+                ? null
+                : ((int) $application['financial_need'] === 1 ? 'Yes' : 'No'),
+        ];
+
+        $normalizedRows = '';
+        foreach ($normalized as $label => $value) {
+            $normalizedRows .= '<tr><th scope="row">' . View::e($label) . '</th><td>'
+                . View::e($value ?? '—') . '</td></tr>';
+        }
+
+        $body = Flash::render()
+            . '<div class="page-header"><div><h1>' . View::e($application['display_name']) . '</h1>'
+            . '<p>' . View::e($application['university_id']) . ' · ' . View::e($application['email']) . '</p></div>'
+            . '<a class="button secondary" href="/review/' . $orgUnitId . '?view=students">Back to program</a></div>'
+            . '<section class="card"><h2>Applicant information</h2><div class="table-wrap"><table><tbody>'
+            . $normalizedRows . '</tbody></table></div></section>'
+            . '<section class="card" style="margin-top:1rem"><h2>Application responses</h2>'
+            . '<div class="table-wrap"><table><tbody>' . $responseRows . '</tbody></table></div></section>';
+
+        return $this->render($application['display_name'], $body, $cycle);
     }
 
     public function rubric(array $params): string
@@ -748,7 +833,7 @@ final class ReviewController
                     . View::e($allocation['scholarship_name']) . '</a> ' . View::status($assessment['status']);
             }
 
-            $rows .= '<tr><td><strong>' . View::e($application['display_name']) . '</strong><br><span class="muted">'
+            $rows .= '<tr><td><a href="/review/' . $orgUnitId . '/applicants/' . (int) $application['id'] . '"><strong>' . View::e($application['display_name']) . '</strong></a><br><span class="muted">'
                 . View::e($application['university_id']) . '</span></td>'
                 . '<td>' . View::e($application['classification'] ?? '—') . '</td>'
                 . '<td>' . View::e($application['gpa'] ?? '—') . '</td>'
