@@ -4,7 +4,7 @@
   "license": "proprietary",
   "type": "project",
   "require": {
-    "php": "^8.5",
+    "php": "^8.3",
     "ext-pdo": "*",
     "ext-json": "*",
     "phpoffice/phpspreadsheet": "^3.9",
