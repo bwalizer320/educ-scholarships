@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Auth\AuthService;
 use App\Controllers\Admin\ApplicantController;
 use App\Controllers\Admin\CycleController;
+use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReviewSetupController;
@@ -21,6 +22,7 @@ $auth = new AuthService($pdo);
 $router = new Router();
 
 $cycleController = new CycleController($pdo, $auth);
+$deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
@@ -186,6 +188,12 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Dean's Office review */
+$router->get('/dean/recommendations', fn(array $p = []): string => $deanReviewController->recommendations());
+$router->post('/dean/recommendations/{id}/award', fn(array $p): never => $deanReviewController->createAward($p));
+$router->get('/dean/verification', fn(array $p = []): string => $deanReviewController->verification());
+$router->post('/dean/verification/{id}/approve', fn(array $p): never => $deanReviewController->approve($p));
 
 /* Enrollment snapshots */
 $router->get('/admin/enrollment', fn(array $p = []): string => $enrollmentController->index());
