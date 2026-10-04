@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Auth\AuthService;
+use App\Services\Recipients\UicaAccessService;
+use App\Controllers\Admin\ThankYouAdminController;
+use App\Controllers\ThankYouReviewController;
 use App\Policies\ProgramScopePolicy;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Admin\RecipientAdminController;
@@ -31,6 +34,7 @@ $router = new Router();
 
 $activationController = new ActivationController($pdo, $auth);
 $recipientController = new RecipientController($pdo, $auth);
+$thankYouReviewController = new ThankYouReviewController($pdo, $auth, new UicaAccessService($pdo));
 
 $cycleController = new CycleController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
@@ -40,6 +44,7 @@ $notificationController = new NotificationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $recipientAdminController = new RecipientAdminController($pdo, $auth);
+$thankYouAdminController = new ThankYouAdminController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
@@ -220,6 +225,16 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Thank-you reviewer and reminder workflows */
+$router->get('/thank-yous/review', fn(array $p = []): string => $thankYouReviewController->index());
+$router->get('/thank-yous/review/zip', fn(array $p = []): never => $thankYouReviewController->zip());
+$router->get('/thank-yous/review/{id}/download', fn(array $p): never => $thankYouReviewController->download($p));
+$router->get('/admin/thank-you-reminders', fn(array $p = []): string => $thankYouAdminController->reminders());
+$router->post('/admin/thank-you-reminders', fn(array $p = []): never => $thankYouAdminController->queueReminders());
+$router->get('/admin/thank-you-reviewers', fn(array $p = []): string => $thankYouAdminController->reviewerAccess());
+$router->post('/admin/thank-you-reviewers', fn(array $p = []): never => $thankYouAdminController->grantReviewer());
+$router->post('/admin/thank-you-reviewers/{id}/remove', fn(array $p): never => $thankYouAdminController->removeReviewer($p));
 
 /* Recipient post-award administration */
 $router->get('/admin/distribution-requests', fn(array $p = []): string => $recipientAdminController->distributionRequests());
