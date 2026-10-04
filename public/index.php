@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 use App\Auth\AuthService;
+use App\Policies\ProgramScopePolicy;
+use App\Controllers\Admin\UserController;
+use App\Controllers\Admin\RecipientAdminController;
+use App\Controllers\ReviewController;
+use App\Controllers\RecipientController;
+use App\Controllers\ActivationController;
 use App\Controllers\Admin\ApplicantController;
 use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\DeanReviewController;
@@ -23,6 +29,9 @@ $pdo = Connection::get();
 $auth = new AuthService($pdo);
 $router = new Router();
 
+$activationController = new ActivationController($pdo, $auth);
+$recipientController = new RecipientController($pdo, $auth);
+
 $cycleController = new CycleController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
@@ -30,18 +39,24 @@ $planningController = new PlanningController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
+$recipientAdminController = new RecipientAdminController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
 
 $router->get('/', static function () use ($auth): never {
-    header('Location: ' . ($auth->check() ? '/dashboard' : '/login'));
+    if (!$auth->check()) {
+        header('Location: /login');
+        exit;
+    }
+
+    header('Location: ' . ($auth->personType() === 'student' ? '/portal' : '/dashboard'));
     exit;
 });
 
 $router->get('/login', static function () use ($auth): string {
     if ($auth->check()) {
-        header('Location: /dashboard');
+        header('Location: ' . ($auth->personType() === 'student' ? '/portal' : '/dashboard'));
         exit;
     }
 
@@ -90,6 +105,10 @@ $router->post('/logout', static function () use ($auth): never {
 $router->get('/dashboard', static function () use ($auth, $pdo): string {
     if (!$auth->check()) {
         header('Location: /login');
+        exit;
+    }
+    if ($auth->personType() === 'student') {
+        header('Location: /portal');
         exit;
     }
 
@@ -166,6 +185,15 @@ $router->get('/dashboard', static function () use ($auth, $pdo): string {
     );
 });
 
+/* Recipient activation and portal */
+$router->get('/activate/{token}', fn(array $p): string => $activationController->form($p));
+$router->post('/activate/{token}', fn(array $p): never => $activationController->activate($p));
+$router->get('/portal', fn(array $p = []): string => $recipientController->index());
+$router->get('/portal/awards/{public}', fn(array $p): string => $recipientController->award($p));
+$router->post('/portal/awards/{public}/distribution-request', fn(array $p): never => $recipientController->requestDistribution($p));
+$router->post('/portal/awards/{public}/thank-you', fn(array $p): never => $recipientController->submitThankYou($p));
+$router->get('/portal/awards/{public}/letter', fn(array $p): never => $recipientController->letter($p));
+
 /* Academic cycle setup */
 $router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
 $router->post('/admin/cycles', fn(array $p = []): never => $cycleController->create());
@@ -192,6 +220,13 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Recipient post-award administration */
+$router->get('/admin/distribution-requests', fn(array $p = []): string => $recipientAdminController->distributionRequests());
+$router->post('/admin/distribution-requests/{id}', fn(array $p): never => $recipientAdminController->reviewDistributionRequest($p));
+$router->get('/admin/thank-yous', fn(array $p = []): string => $recipientAdminController->thankYous());
+$router->get('/admin/thank-yous/zip', fn(array $p = []): never => $recipientAdminController->zip());
+$router->get('/admin/thank-yous/{id}/download', fn(array $p): never => $recipientAdminController->downloadThankYou($p));
 
 /* Templates and notifications */
 $router->get('/admin/templates', fn(array $p = []): string => $templateController->index());
