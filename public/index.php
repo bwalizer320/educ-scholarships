@@ -20,6 +20,7 @@ use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\HistoricalImportController;
 use App\Controllers\Admin\PlanningController;
 use App\Controllers\Admin\ReallocationController;
+use App\Controllers\Admin\ScholarshipController;
 use App\Controllers\Admin\NotificationController;
 use App\Controllers\Admin\TemplateController;
 use App\Controllers\Admin\TestMailController;
@@ -54,6 +55,7 @@ $enrollmentController = new EnrollmentController($pdo, $auth);
 $historicalImportController = new HistoricalImportController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reallocationController = new ReallocationController($pdo, $auth);
+$scholarshipController = new ScholarshipController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
 $testMailController = new TestMailController($pdo, $auth);
@@ -243,6 +245,14 @@ $router->get('/admin/history-imports', fn(array $p = []): string => $historicalI
 $router->post('/admin/history-imports', fn(array $p = []): never => $historicalImportController->stage());
 $router->get('/admin/history-imports/{id}/map', fn(array $p): string => $historicalImportController->mapping($p));
 $router->post('/admin/history-imports/{id}/process', fn(array $p): never => $historicalImportController->process($p));
+
+/* Scholarship catalog */
+$router->get('/admin/scholarships', fn(array $p = []): string => $scholarshipController->index());
+$router->post('/admin/scholarships', fn(array $p = []): never => $scholarshipController->create());
+$router->get('/admin/scholarships/{id}', fn(array $p): string => $scholarshipController->detail($p));
+$router->post('/admin/scholarships/{id}/criteria', fn(array $p): never => $scholarshipController->addCriterion($p));
+$router->post('/admin/scholarships/{id}/add-to-cycle', fn(array $p): never => $scholarshipController->addToCycle($p));
+$router->post('/admin/scholarships/{id}/intent-version', fn(array $p): never => $scholarshipController->newVersion($p));
 
 /* Academic cycle setup */
 $router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
