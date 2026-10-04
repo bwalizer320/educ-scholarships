@@ -23,6 +23,7 @@ $cycleController = new CycleController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
+$reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
 
 $router->get('/', static function () use ($auth): never {
     header('Location: ' . ($auth->check() ? '/dashboard' : '/login'));
@@ -144,6 +145,7 @@ $router->get('/dashboard', static function () use ($auth, $pdo): string {
         . '<a class="button secondary" href="/admin/renewals">Renewals</a>'
         . '<a class="button secondary" href="/admin/allocations">Allocations</a>'
         . '<a class="button secondary" href="/admin/applicants">Applicants</a>'
+        . '<a class="button secondary" href="/review">Program review</a>'
         . '</div></section>';
 
     return View::layout(
@@ -181,6 +183,16 @@ $router->get('/admin/rubrics', fn(array $p = []): string => $reviewSetupControll
 $router->get('/admin/rubrics/{id}', fn(array $p): string => $reviewSetupController->rubric($p));
 $router->post('/admin/rubrics/{id}/items', fn(array $p): never => $reviewSetupController->addRubricItem($p));
 $router->post('/admin/rubrics/{id}/status', fn(array $p): never => $reviewSetupController->setRubricStatus($p));
+
+/* Program and department scholarship review */
+$router->get('/review', fn(array $p = []): string => $reviewController->index());
+$router->get('/review/{org}', fn(array $p): string => $reviewController->unit($p));
+$router->get('/review/{org}/allocation/{allocation}', fn(array $p): string => $reviewController->allocation($p));
+$router->post('/review/{org}/allocation/{allocation}/recommend', fn(array $p): never => $reviewController->recommend($p));
+$router->post('/review/{org}/allocation/{allocation}/recommend/remove', fn(array $p): never => $reviewController->removeRecommendation($p));
+$router->get('/review/{org}/applicants/{application}/rubric', fn(array $p): string => $reviewController->rubric($p));
+$router->post('/review/{org}/applicants/{application}/rubric', fn(array $p): never => $reviewController->saveRubric($p));
+$router->post('/review/{org}/submit', fn(array $p): never => $reviewController->submit($p));
 
 /* Applicant import and official program mapping */
 $router->get('/admin/applicants', fn(array $p = []): string => $applicantController->index());
