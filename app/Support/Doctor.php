@@ -14,7 +14,7 @@ final class Doctor
         $checks = [];
 
         $checks['php_version'] = [
-            'ok' => version_compare(PHP_VERSION, '8.5.0', '>='),
+            'ok' => version_compare(PHP_VERSION, '8.3.0', '>='),
             'detail' => PHP_VERSION,
         ];
 
