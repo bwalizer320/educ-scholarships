@@ -40,20 +40,18 @@ final class Migrator
                 throw new RuntimeException("Could not read migration {$migration}");
             }
 
-            $this->pdo->beginTransaction();
+            /*
+             * MariaDB/MySQL implicitly commit around DDL. Do not wrap a migration
+             * file in a PDO transaction because CREATE/ALTER TABLE can end it
+             * underneath PDO and make commit()/rollBack() invalid.
+             */
+            $this->pdo->exec($sql);
 
-            try {
-                $this->pdo->exec($sql);
-                $stmt = $this->pdo->prepare(
-                    'INSERT INTO schema_migrations (migration, applied_at) VALUES (?, NOW())'
-                );
-                $stmt->execute([$migration]);
-                $this->pdo->commit();
-                $ran[] = $migration;
-            } catch (\Throwable $e) {
-                $this->pdo->rollBack();
-                throw $e;
-            }
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO schema_migrations (migration, applied_at) VALUES (?, NOW())'
+            );
+            $stmt->execute([$migration]);
+            $ran[] = $migration;
         }
 
         return $ran;
