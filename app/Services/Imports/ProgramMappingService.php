@@ -20,13 +20,13 @@ final class ProgramMappingService
     ): ?array {
         if ($subprogramId !== null && $subprogramId !== '') {
             $stmt = $this->pdo->prepare(
-                'SELECT po.id AS program_offering_id, po.org_unit_id
+                "SELECT po.id AS program_offering_id, po.org_unit_id
                  FROM program_offerings po
                  WHERE po.pgms_program_descr = ?
                    AND po.pgms_objective_key = ?
                    AND po.pgms_sub_program_id = ?
                    AND po.active = 1
-                 LIMIT 1'
+                 LIMIT 1"
             );
             $stmt->execute([$program, $objective ?? '', $subprogramId]);
             $match = $stmt->fetch();
@@ -37,13 +37,13 @@ final class ProgramMappingService
         }
 
         $stmt = $this->pdo->prepare(
-            'SELECT po.id AS program_offering_id, po.org_unit_id
+            "SELECT po.id AS program_offering_id, po.org_unit_id
              FROM program_offerings po
              WHERE po.pgms_program_descr = ?
                AND po.pgms_objective_key = ?
                AND COALESCE(po.pgms_sub_program_descr, '') = ?
                AND po.active = 1
-             LIMIT 1'
+             LIMIT 1"
         );
         $stmt->execute([$program, $objective ?? '', $subprogram ?? '']);
         $match = $stmt->fetch();
@@ -59,7 +59,7 @@ final class ProgramMappingService
         ?string $subprogramId = null
     ): ?array {
         $stmt = $this->pdo->prepare(
-            'SELECT program_offering_id, org_unit_id
+            "SELECT program_offering_id, org_unit_id
              FROM program_mapping_aliases
              WHERE source_system = ?
                AND source_program = ?
@@ -67,7 +67,7 @@ final class ProgramMappingService
                AND COALESCE(source_subprogram, '') = ?
                AND COALESCE(source_subprogram_id, '') = ?
                AND active = 1
-             LIMIT 1'
+             LIMIT 1"
         );
         $stmt->execute([
             $sourceSystem,
