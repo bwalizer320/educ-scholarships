@@ -242,6 +242,15 @@ HTML;
                     . View::csrfField()
                     . '<input type="hidden" name="term_id" value="' . (int) $termId . '">'
                     . '<button class="small" type="submit">Approve award</button></form>';
+            } elseif ((bool) ($award['student_teaching_required'] ?? false) && !$award['student_teaching_term_id']) {
+                $action = '<form method="post" action="/dean/verification/' . (int) $award['id'] . '/student-teaching-term">'
+                    . View::csrfField()
+                    . '<label class="muted" for="term_' . (int) $award['id'] . '">Student-teaching term</label>'
+                    . '<select id="term_' . (int) $award['id'] . '" name="term_id" required>'
+                    . '<option value="' . (int) $terms['fall'] . '">Fall</option>'
+                    . '<option value="' . (int) $terms['spring'] . '">Spring</option>'
+                    . '</select>'
+                    . '<button class="small" type="submit" style="margin-top:.4rem">Set term</button></form>';
             } elseif ((int) $award['distribution_count'] === 0) {
                 $action = '<span class="muted">Distribution term required</span>';
             } else {
@@ -285,6 +294,72 @@ HTML;
 HTML;
 
         return $this->render('Enrollment verification', $body, $cycle);
+    }
+
+    public function setStudentTeachingTerm(array $params): never
+    {
+        $this->requireAdmin();
+        $this->requirePost();
+        $cycle = $this->requireCurrentCycle();
+        $awardId = (int) ($params['id'] ?? 0);
+        $termId = (int) ($_POST['term_id'] ?? 0);
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT a.*, app.id AS application_id, sar.student_teaching_required
+                 FROM awards a
+                 JOIN cycle_scholarships cs ON cs.id = a.cycle_scholarship_id
+                 LEFT JOIN scholarship_award_rules sar ON sar.intent_version_id = cs.intent_version_id
+                 LEFT JOIN applications app
+                   ON app.cycle_id = a.cycle_id
+                  AND app.student_id = a.student_id
+                 WHERE a.id = ? AND a.cycle_id = ?"
+            );
+            $stmt->execute([$awardId, (int) $cycle['id']]);
+            $award = $stmt->fetch();
+
+            if (!$award || !(bool) ($award['student_teaching_required'] ?? false)) {
+                throw new RuntimeException('This award is not configured as a student-teaching scholarship.');
+            }
+
+            $termStmt = $this->pdo->prepare(
+                'SELECT season FROM academic_terms WHERE id = ? AND cycle_id = ?'
+            );
+            $termStmt->execute([$termId, (int) $cycle['id']]);
+            $season = $termStmt->fetchColumn();
+
+            if (!in_array($season, ['fall','spring'], true)) {
+                throw new RuntimeException('Choose a valid Fall or Spring term.');
+            }
+
+            if ($award['application_id']) {
+                $this->pdo->prepare(
+                    'UPDATE applications SET student_teaching_term_id = ? WHERE id = ?'
+                )->execute([$termId, $award['application_id']]);
+            }
+
+            $service = new AwardService($this->pdo, new DistributionService());
+            $service->replaceDistributions($awardId, [[
+                'academic_term_id' => $termId,
+                'amount' => (float) $award['total_amount'],
+                'source' => 'deans_office',
+            ]]);
+
+            $this->audit(
+                'award.student_teaching_term_set',
+                'award',
+                $awardId,
+                (int) $cycle['id'],
+                null,
+                ['term_id'=>$termId]
+            );
+
+            Flash::success('Student-teaching term saved and the award distribution updated.');
+        } catch (\Throwable $e) {
+            Flash::error($e->getMessage());
+        }
+
+        $this->redirect('/dean/verification');
     }
 
     public function approve(array $params): never
