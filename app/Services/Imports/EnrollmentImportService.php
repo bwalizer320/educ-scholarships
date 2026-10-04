@@ -57,6 +57,12 @@ final class EnrollmentImportService
                         $subprogram !== '' ? $subprogram : '(no subprogram)',
                     ]);
                     $unmapped[$key] = true;
+                    $this->queueProgramMapping(
+                        $importId,
+                        $program,
+                        $objective,
+                        $subprogram
+                    );
                 }
 
                 $rows[] = [
@@ -91,6 +97,27 @@ final class EnrollmentImportService
             $this->markFailed($importId, $e->getMessage());
             throw $e;
         }
+    }
+
+    private function queueProgramMapping(
+        int $importId,
+        string $program,
+        string $objective,
+        string $subprogram
+    ): void {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO program_mapping_queue (
+                source_system, source_program, source_objective, source_subprogram,
+                source_subprogram_id, first_seen_import_type, first_seen_import_id
+             ) VALUES ('maui', ?, ?, ?, '', 'enrollment', ?)
+             ON DUPLICATE KEY UPDATE occurrence_count = occurrence_count + 1"
+        );
+        $stmt->execute([
+            $program,
+            $objective,
+            $subprogram,
+            $importId,
+        ]);
     }
 
     private function createImport(
