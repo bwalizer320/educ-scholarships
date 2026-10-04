@@ -17,6 +17,7 @@ use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
 use App\Controllers\Admin\PlanningController;
+use App\Controllers\Admin\ReallocationController;
 use App\Controllers\Admin\NotificationController;
 use App\Controllers\Admin\TemplateController;
 use App\Controllers\Admin\ReviewSetupController;
@@ -40,6 +41,7 @@ $cycleController = new CycleController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
 $planningController = new PlanningController($pdo, $auth);
+$reallocationController = new ReallocationController($pdo, $auth);
 $notificationController = new NotificationController($pdo, $auth);
 $templateController = new TemplateController($pdo, $auth);
 $reviewSetupController = new ReviewSetupController($pdo, $auth);
@@ -250,6 +252,11 @@ $router->post('/admin/templates/email', fn(array $p = []): never => $templateCon
 $router->get('/notifications/ready', fn(array $p = []): string => $notificationController->ready());
 $router->post('/notifications/queue', fn(array $p = []): never => $notificationController->queue());
 $router->get('/notifications/history', fn(array $p = []): string => $notificationController->history());
+
+/* Dean's Office reallocation */
+$router->get('/dean/reallocation', fn(array $p = []): string => $reallocationController->index());
+$router->get('/dean/reallocation/{id}', fn(array $p): string => $reallocationController->scholarship($p));
+$router->post('/dean/reallocation/{id}/award', fn(array $p): never => $reallocationController->award($p));
 
 /* Dean's Office review */
 $router->get('/dean/recommendations', fn(array $p = []): string => $deanReviewController->recommendations());
