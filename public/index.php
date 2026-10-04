@@ -143,6 +143,11 @@ $router->get('/dashboard', static function () use ($auth, $pdo): string {
         exit;
     }
 
+    if (in_array($auth->staffRole(), ['program_coordinator', 'department_chair'], true)) {
+        header('Location: /review');
+        exit;
+    }
+
     $cycle = $pdo->query(
         'SELECT * FROM academic_cycles WHERE is_current = 1 LIMIT 1'
     )->fetch() ?: null;
