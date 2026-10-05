@@ -13,6 +13,7 @@ use App\Controllers\ReviewController;
 use App\Controllers\RecipientController;
 use App\Controllers\ActivationController;
 use App\Controllers\Admin\ApplicantController;
+use App\Controllers\Admin\AnnualAwardAuthorityController;
 use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\CycleReportController;
 use App\Controllers\Admin\DeanReviewController;
@@ -65,6 +66,7 @@ $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $recipientAdminController = new RecipientAdminController($pdo, $auth);
 $thankYouAdminController = new ThankYouAdminController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
+$annualAwardAuthorityController = new AnnualAwardAuthorityController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
 
@@ -300,6 +302,10 @@ $router->post('/admin/cycles/{id}/current', fn(array $p): never => $cycleControl
 $router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleController->setup($p));
 $router->post('/admin/cycles/{id}/checklist/{item}', fn(array $p): never => $cycleController->checklist($p));
 $router->post('/admin/cycles/{id}/dates', fn(array $p): never => $cycleController->saveDates($p));
+
+/* Annual award authority */
+$router->get('/admin/award-authority', fn(array $p = []): string => $annualAwardAuthorityController->index());
+$router->post('/admin/award-authority', fn(array $p = []): never => $annualAwardAuthorityController->import());
 
 /* Annual planning and renewals */
 $router->get('/admin/planning', fn(array $p = []): string => $planningController->planning());
