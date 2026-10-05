@@ -58,7 +58,7 @@ final class AnnualAwardAuthorityController extends BaseAdminController
             . '<section class="metric-card"><div><span class="metric-label">Authorized total</span><strong class="metric-value">' . View::money($summary['authority_total']) . '</strong></div></section>'
             . '</div>'
             . '<section class="card" style="margin-top:1rem"><h2>Import workbook</h2>'
-            . '<p>The importer reads the <strong>Schols - Simplified</strong> and <strong>Spring Awards - Simplified</strong> sheets for annual authority and uses the matching <strong>All data</strong> sheets for administrator-only fund snapshots.</p>'
+            . '<p>The importer reads both simplified FY27 award sheets, both detailed <strong>All data</strong> sheets, and the <strong>UICA Account Bal and Activities</strong> sheet. Every source row is retained for test/audit use; fund financial details remain administrator-only.</p>'
             . '<div class="notice"><strong>Reviewer privacy:</strong> fund IDs, UICA balances, payout projections, expense history, donor-report contacts, and the full financial snapshot are available only to Scholarship Manager administrators. Faculty reviewers see only scholarship guidance, eligibility criteria, their program recommendation budget, and applicant information.</div>'
             . '<form method="post" action="/admin/award-authority" enctype="multipart/form-data">'
             . View::csrfField()
@@ -99,14 +99,20 @@ final class AnnualAwardAuthorityController extends BaseAdminController
                 (int)$cycle['id'],
                 null,
                 [
-                    'row_count' => (int)$result['row_count'],
-                    'created_scholarships' => (int)$result['created_scholarships'],
+                    'authority_rows' => (int)$result['authority_rows'],
+                    'authority_total' => (float)$result['authority_total'],
+                    'catalog_created' => (int)$result['catalog_created'],
+                    'variant_created' => (int)$result['variant_created'],
+                    'source_rows' => (int)$result['source_rows'],
                 ]
             );
 
-            $message = (int)$result['row_count'] . ' fund row(s) imported.';
-            if ((int)$result['created_scholarships'] > 0) {
-                $message .= ' ' . (int)$result['created_scholarships'] . ' new scholarship record(s) created.';
+            $newScholarships = (int)$result['catalog_created'] + (int)$result['variant_created'];
+            $message = (int)$result['authority_rows'] . ' FY27 award row(s) imported totaling '
+                . View::money($result['authority_total']) . '. '
+                . (int)$result['source_rows'] . ' source row(s) preserved.';
+            if ($newScholarships > 0) {
+                $message .= ' ' . $newScholarships . ' new scholarship catalog record(s) created.';
             }
 
             Flash::success($message);
