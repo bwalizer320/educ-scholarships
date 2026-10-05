@@ -128,16 +128,31 @@ final class View
         .app-shell { width: 100%; margin: 0; display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); min-height: calc(100vh - 60px); }
         .app-shell.public-shell { grid-template-columns: 1fr; max-width: 52rem; margin: 0 auto; min-height: auto; }
 
-        nav { background: var(--sidebar); border-right: 1px solid #22252a; padding: .85rem .65rem 1.25rem; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3b3f45 transparent; }
-        .nav-section { margin: 0 0 .85rem; }
-        .nav-section:last-child { margin-bottom: 0; }
-        .nav-section-label { display: block; margin: 0 .7rem .28rem; color: #747b85; font-size: .61rem; line-height: 1.2; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-        nav a { position: relative; display: flex; align-items: center; gap: .62rem; min-height: 2.12rem; padding: .42rem .62rem; margin: .08rem 0; border-radius: .55rem; color: #c9ced5; text-decoration: none; font-weight: 600; font-size: .82rem; transition: background .12s ease, color .12s ease; }
-        nav a:hover { background: var(--sidebar-hover); color: #fff; }
-        nav a[aria-current="page"] { background: #272a2f; color: #fff; box-shadow: inset 3px 0 0 var(--iowa-gold); }
+        nav { background: var(--sidebar); border-right: 1px solid #22252a; padding: .8rem .6rem 1.25rem; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3b3f45 transparent; }
+        .nav-home,
+        .nav-disclosure > summary { position: relative; display: flex; align-items: center; gap: .62rem; min-height: 2.35rem; padding: .5rem .62rem; margin: .08rem 0; border-radius: .58rem; color: #c9ced5; font-weight: 680; font-size: .84rem; line-height: 1.2; transition: background .12s ease, color .12s ease; }
+        .nav-home { text-decoration: none; }
+        .nav-home:hover,
+        .nav-disclosure > summary:hover { background: var(--sidebar-hover); color: #fff; }
+        .nav-home[aria-current="page"] { background: #272a2f; color: #fff; box-shadow: inset 3px 0 0 var(--iowa-gold); }
+        .nav-home[aria-current="page"] .nav-icon,
+        .nav-home:hover .nav-icon,
+        .nav-disclosure[open] > summary .nav-icon,
+        .nav-disclosure > summary:hover .nav-icon { color: var(--iowa-gold); }
+        .nav-disclosure { margin: .1rem 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+        .nav-disclosure > summary { list-style: none; cursor: pointer; user-select: none; }
+        .nav-disclosure > summary::-webkit-details-marker { display: none; }
+        .nav-disclosure[open] > summary { background: #1a1d21; color: #fff; }
+        .nav-disclosure.is-current > summary { color: #fff; }
         .nav-icon { width: 1rem; height: 1rem; flex: 0 0 1rem; color: #8f969f; }
-        nav a:hover .nav-icon, nav a[aria-current="page"] .nav-icon { color: var(--iowa-gold); }
-        .nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .nav-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nav-chevron { width: .8rem; height: .8rem; flex: 0 0 .8rem; color: #727982; transition: transform .15s ease; }
+        .nav-disclosure[open] > summary .nav-chevron { transform: rotate(90deg); color: #aab0b8; }
+        .nav-children { position: relative; margin: .15rem 0 .35rem 1.13rem; padding: .08rem 0 .08rem .7rem; border-left: 1px solid #34383e; }
+        .nav-child { display: block; min-height: 1.95rem; padding: .38rem .55rem; margin: .03rem 0; border-radius: .45rem; color: #9da4ad; text-decoration: none; font-size: .77rem; font-weight: 560; line-height: 1.25; }
+        .nav-child:hover { background: #1b1e22; color: #fff; }
+        .nav-child[aria-current="page"] { background: #23262b; color: #fff; font-weight: 700; }
+        .nav-child[aria-current="page"]::before { content: ""; position: absolute; left: -.5px; width: 2px; height: 1.1rem; margin-top: .06rem; background: var(--iowa-gold); border-radius: 999px; }
 
         main { min-width: 0; background: #f5f6f8; padding: 1.75rem 2rem 3rem; }
         main > * { max-width: 92rem; }
@@ -246,11 +261,9 @@ final class View
             .brand .iowa, .brand-divider { display: none; }
             .cycle-pill, .user-block { display: none; }
             .app-shell { grid-template-columns: 1fr; min-height: auto; }
-            nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid #22252a; display: flex; gap: .2rem; overflow-x: auto; padding: .55rem .65rem; }
-            .nav-section { display: flex; gap: .2rem; margin: 0; flex: 0 0 auto; }
-            .nav-section-label { display: none; }
-            nav a { white-space: nowrap; margin: 0; min-height: 2.2rem; padding: .48rem .6rem; }
-            nav a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--iowa-gold); }
+            nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid #22252a; padding: .55rem .65rem .7rem; overflow: visible; }
+            .nav-home, .nav-disclosure > summary { min-height: 2.3rem; }
+            .nav-children { margin-left: 1.15rem; }
             main { padding: 1rem; }
             .page-header { flex-direction: column; margin-bottom: 1rem; }
             .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -307,6 +320,7 @@ HTML;
             'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06-2.83 2.83-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21h-4v-.17a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06-2.83-2.83.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3v-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06 2.83-2.83.06.06A1.65 1.65 0 0 0 8.92 4a1.65 1.65 0 0 0 1-1.51V2h4v.49A1.65 1.65 0 0 0 14.92 4a1.65 1.65 0 0 0 1.82-.33l.06-.06 2.83 2.83-.06.06A1.65 1.65 0 0 0 19.4 9c.12.61.61 1.1 1.22 1.22H21v4h-.38A1.65 1.65 0 0 0 19.4 15z"/>',
             'logout' => '<path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/>',
             'arrow' => '<path d="M5 12h14M13 6l6 6-6 6"/>',
+            'chevron' => '<path d="m9 18 6-6-6-6"/>',
             default => '<circle cx="12" cy="12" r="8"/>',
         };
 
@@ -319,96 +333,120 @@ HTML;
     {
         if ($role === 'student') {
             return '<nav aria-label="Recipient navigation">'
-                . self::navGroup('Awards', [
-                    ['/portal', 'My Awards', 'award'],
-                ])
+                . self::navRootItem('/portal', 'My Awards', 'award')
                 . '</nav>';
         }
 
         if (in_array($role, ['program_coordinator', 'department_chair'], true)) {
             return '<nav aria-label="Primary">'
-                . self::navGroup('Workspace', [
-                    ['/dashboard', 'Dashboard', 'dashboard'],
-                    ['/review', 'Program Review', 'review'],
-                    ['/thank-yous/review', 'Thank-you Review', 'mail'],
+                . self::navRootItem('/dashboard', 'Dashboard', 'dashboard')
+                . self::navDisclosure('Review', 'review', [
+                    ['/review', 'Program Review'],
+                    ['/thank-yous/review', 'Thank-you Review'],
                 ])
                 . '</nav>';
         }
 
-        $testMail = (Env::get('APP_ENV', 'development') ?? 'development') !== 'production'
-            ? [['/admin/test-mail', 'Testing Mail', 'settings']]
-            : [];
+        $adminItems = [
+            ['/admin/organization', 'Programs'],
+            ['/admin/users', 'Users'],
+            ['/notifications/ready', 'Notify'],
+            ['/notifications/history', 'Notification History'],
+            ['/admin/templates', 'Templates'],
+        ];
+
+        if ((Env::get('APP_ENV', 'development') ?? 'development') !== 'production') {
+            $adminItems[] = ['/admin/test-mail', 'Testing Mail'];
+        }
 
         return '<nav aria-label="Primary">'
-            . self::navGroup('Workspace', [
-                ['/dashboard', 'Dashboard', 'dashboard'],
+            . self::navRootItem('/dashboard', 'Dashboard', 'dashboard')
+            . self::navDisclosure('Cycle', 'calendar', [
+                ['/admin/cycles', 'Cycles'],
+                ['/admin/planning', 'Planning'],
+                ['/admin/cycle-report', 'Cycle Report'],
+                ['/admin/history-imports', 'History Import'],
             ])
-            . self::navGroup('Cycle', [
-                ['/admin/cycles', 'Cycles', 'calendar'],
-                ['/admin/planning', 'Planning', 'planning'],
-                ['/admin/cycle-report', 'Cycle Report', 'report'],
-                ['/admin/history-imports', 'History Import', 'history'],
+            . self::navDisclosure('Awards', 'award', [
+                ['/admin/scholarships', 'Scholarships'],
+                ['/admin/renewals', 'Renewals'],
+                ['/admin/allocations', 'Allocations'],
+                ['/admin/applicants', 'Applicants'],
+                ['/admin/enrollment', 'Enrollment'],
             ])
-            . self::navGroup('Awards', [
-                ['/admin/scholarships', 'Scholarships', 'award'],
-                ['/admin/renewals', 'Renewals', 'renew'],
-                ['/admin/allocations', 'Allocations', 'allocation'],
-                ['/admin/applicants', 'Applicants', 'applicant'],
-                ['/admin/enrollment', 'Enrollment', 'enrollment'],
+            . self::navDisclosure('Review', 'review', [
+                ['/review', 'Program Review'],
+                ['/admin/reviewers', 'Reviewers'],
+                ['/admin/rubrics', 'Rubrics'],
+                ['/dean/recommendations', 'Dean Review'],
+                ['/dean/reallocation', 'Reallocation'],
+                ['/dean/verification', 'Verification'],
             ])
-            . self::navGroup('Review', [
-                ['/review', 'Program Review', 'review'],
-                ['/admin/reviewers', 'Reviewers', 'users'],
-                ['/admin/rubrics', 'Rubrics', 'rubric'],
-                ['/dean/recommendations', 'Dean Review', 'dean'],
-                ['/dean/reallocation', 'Reallocation', 'allocation'],
-                ['/dean/verification', 'Verification', 'verify'],
+            . self::navDisclosure('Recipients', 'users', [
+                ['/admin/distribution-requests', 'Distribution'],
+                ['/admin/thank-yous', 'Thank-you Letters'],
+                ['/admin/thank-you-reminders', 'Reminders'],
+                ['/thank-yous/review', 'Thank-you Review'],
+                ['/admin/thank-you-reviewers', 'Thank-you Reviewers'],
             ])
-            . self::navGroup('Recipients', [
-                ['/admin/distribution-requests', 'Distribution', 'allocation'],
-                ['/admin/thank-yous', 'Thank-you Letters', 'mail'],
-                ['/admin/thank-you-reminders', 'Reminders', 'renew'],
-                ['/thank-yous/review', 'Thank-you Review', 'review'],
-                ['/admin/thank-you-reviewers', 'Thank-you Reviewers', 'users'],
-            ])
-            . self::navGroup('Comms', [
-                ['/notifications/ready', 'Notify', 'mail'],
-                ['/notifications/history', 'Notification History', 'history'],
-                ['/admin/templates', 'Templates', 'template'],
-            ])
-            . self::navGroup('Admin', array_merge([
-                ['/admin/organization', 'Programs', 'program'],
-                ['/admin/users', 'Users', 'users'],
-            ], $testMail))
+            . self::navDisclosure('Admin', 'settings', $adminItems)
             . '</nav>';
     }
 
-    /**
-     * @param array<int, array{0:string,1:string,2?:string}> $items
-     */
-    private static function navGroup(string $label, array $items): string
+    private static function navRootItem(string $href, string $label, string $icon): string
     {
-        $html = '<div class="nav-section"><span class="nav-section-label">' . self::e($label) . '</span>';
+        $current = self::navPathIsActive($href) ? ' aria-current="page"' : '';
 
-        foreach ($items as $item) {
-            [$href, $text] = $item;
-            $icon = $item[2] ?? 'dashboard';
-            $html .= self::navItem($href, $text, $icon);
-        }
-
-        return $html . '</div>';
-    }
-
-    private static function navItem(string $href, string $label, string $icon): string
-    {
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        $base = rtrim($href, '/');
-        $active = $path === $href || ($base !== '' && str_starts_with($path, $base . '/'));
-        $current = $active ? ' aria-current="page"' : '';
-
-        return '<a href="' . self::e($href) . '"' . $current . '>'
+        return '<a class="nav-home" href="' . self::e($href) . '"' . $current . '>'
             . self::icon($icon, 'nav-icon')
             . '<span class="nav-label">' . self::e($label) . '</span>'
             . '</a>';
+    }
+
+    /**
+     * @param array<int, array{0:string,1:string}> $items
+     */
+    private static function navDisclosure(string $label, string $icon, array $items): string
+    {
+        $isCurrent = false;
+        foreach ($items as [$href]) {
+            if (self::navPathIsActive($href)) {
+                $isCurrent = true;
+                break;
+            }
+        }
+
+        $open = $isCurrent ? ' open' : '';
+        $currentClass = $isCurrent ? ' is-current' : '';
+        $html = '<details class="nav-disclosure' . $currentClass . '" name="primary-nav"' . $open . '>'
+            . '<summary>'
+            . self::icon($icon, 'nav-icon')
+            . '<span class="nav-label">' . self::e($label) . '</span>'
+            . self::icon('chevron', 'nav-chevron')
+            . '</summary>'
+            . '<div class="nav-children">';
+
+        foreach ($items as [$href, $text]) {
+            $html .= self::navChildItem($href, $text);
+        }
+
+        return $html . '</div></details>';
+    }
+
+    private static function navChildItem(string $href, string $label): string
+    {
+        $current = self::navPathIsActive($href) ? ' aria-current="page"' : '';
+
+        return '<a class="nav-child" href="' . self::e($href) . '"' . $current . '>'
+            . self::e($label)
+            . '</a>';
+    }
+
+    private static function navPathIsActive(string $href): bool
+    {
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $base = rtrim($href, '/');
+
+        return $path === $href || ($base !== '' && str_starts_with($path, $base . '/'));
     }
 }
