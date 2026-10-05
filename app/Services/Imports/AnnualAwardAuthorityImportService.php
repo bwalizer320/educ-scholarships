@@ -176,7 +176,7 @@ final class AnnualAwardAuthorityImportService
                             $cycleCreated++;
                         }
 
-                        $merged = array_merge($master ?? [], $allData ?? [], $simple);
+                        $merged = $this->mergeSources($master, $allData, $simple);
                         $this->insertSnapshot(
                             $importId,
                             (int)$cycleScholarshipId['id'],
@@ -639,6 +639,32 @@ final class AnnualAwardAuthorityImportService
             }
         }
         return null;
+    }
+
+    private function mergeSources(?array $master, ?array $allData, array $simple): array
+    {
+        $merged = $master ?? [];
+
+        foreach ([$allData, $simple] as $source) {
+            if ($source === null) {
+                continue;
+            }
+
+            foreach ($source as $key => $value) {
+                if (str_starts_with((string)$key, '__')) {
+                    $merged[$key] = $value;
+                    continue;
+                }
+
+                if ($value !== null && trim((string)$value) !== '') {
+                    $merged[$key] = $value;
+                } elseif (!array_key_exists($key, $merged)) {
+                    $merged[$key] = $value;
+                }
+            }
+        }
+
+        return $merged;
     }
 
     private function sourceRecordKey(string $fundId, string $name, ?array $master): string
