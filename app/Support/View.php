@@ -364,6 +364,7 @@ HTML;
             . self::navDisclosure('Cycle', 'calendar', [
                 ['/admin/cycles', 'Cycles'],
                 ['/admin/planning', 'Planning'],
+                ['/admin/award-authority', 'Award Authority'],
                 ['/admin/cycle-report', 'Cycle Report'],
                 ['/admin/history-imports', 'History Import'],
             ])
