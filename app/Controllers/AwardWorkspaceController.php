@@ -307,8 +307,8 @@ final class AwardWorkspaceController
                 $studentId = (int)$found['id'];
             } else {
                 $this->pdo->prepare(
-                    'INSERT INTO students (university_id, first_name, last_name, display_name, email)
-                     VALUES (?, ?, ?, ?, ?)'
+                    'INSERT INTO students (public_id, university_id, first_name, last_name, display_name, email)
+                     VALUES (UUID(), ?, ?, ?, ?, ?)'
                 )->execute([$uid, $first, $last, $first . ' ' . $last, $email]);
                 $studentId = (int)$this->pdo->lastInsertId();
             }
