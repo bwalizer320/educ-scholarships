@@ -6,6 +6,8 @@ namespace App\Controllers\Admin;
 
 use App\Services\Imports\AnnualAwardAuthorityImportService;
 use App\Services\Imports\SimpleAllocationImportService;
+use App\Database\TestDataCleaner;
+use App\Support\Env;
 use App\Storage\LocalFileStorage;
 use App\Support\Flash;
 use App\Support\View;
@@ -76,6 +78,32 @@ final class CycleWizardController extends BaseAdminController
             . '<div style="margin-top:1.1rem">' . $content . '</div>'
             . '<div class="actions" style="margin-top:1.1rem;justify-content:space-between">' . $back . $next . '</div>';
         return $this->render('Guided cycle setup', $body, $cycle);
+    }
+
+    /**
+     * A guarded reset in the wizard, intentionally never automatic.
+     * TestDataCleaner rejects production mode or actual student emails.
+     */
+    public function resetDemo(array $params): never
+    {
+        $this->requireAdmin();
+        $this->requirePost();
+        $cycle = $this->findCycle((int)($params['id'] ?? 0));
+
+        try {
+            $entered = trim((string)($_POST['confirmation'] ?? ''));
+            if ($entered !== 'DELETE ' . $cycle['label']) {
+                throw new RuntimeException('Confirmation did not match. Nothing was deleted.');
+            }
+            $preview = (new TestDataCleaner($this->pdo))->clean((string)$cycle['label']);
+            $this->audit('cycle_wizard.demo_reset', 'academic_cycle', (int)$cycle['id'], (int)$cycle['id'],
+                null, ['counts'=>$preview['counts']]);
+            Flash::success('Demo records cleared for ' . $cycle['label']
+                . '. Department, program, academic year, term and user configuration was preserved.');
+        } catch (\Throwable $e) {
+            Flash::error($e->getMessage());
+        }
+        $this->redirect($this->url($cycle, 1));
     }
 
     public function uploadAwards(array $params): never
@@ -288,6 +316,27 @@ final class CycleWizardController extends BaseAdminController
             : '<form method="post" action="/admin/cycles/' . $id . '/current">'
             . View::csrfField() . '<input type="hidden" name="wizard" value="1">'
             . '<button type="submit">Make this the active cycle</button></form>';
+        $demoReset = '';
+        if ((Env::get('APP_ENV', 'development') ?? 'development') === 'testing') {
+            $preview = (new TestDataCleaner($this->pdo))->preview((string)$cycle['label']);
+            $counts = $preview['counts'];
+            $summary = (int)$counts['scholarship_funds'] . ' fund(s), '
+                . (int)$counts['applications'] . ' application(s), '
+                . (int)$counts['awards'] . ' award(s), '
+                . (int)$counts['enrollment_imports'] . ' enrollment import(s)';
+            $demoReset = '<details class="card" style="margin-top:1rem">'
+                . '<summary>Clear demo cycle records before loading a new awards file</summary>'
+                . '<div class="notice" style="margin-top:.75rem">Testing mode only. The reset removes records for this cycle, '
+                . 'not departments, programs, offerings, academic terms, reviewers, user accounts, or templates. '
+                . 'Previously uploaded source files remain in protected storage for retention review.</div>'
+                . '<p><strong>Records to clear:</strong> ' . View::e($summary) . '.</p>'
+                . '<form method="post" action="/admin/cycles/' . $id . '/wizard/reset">'
+                . View::csrfField()
+                . '<label for="reset_confirmation">Type DELETE ' . View::e($cycle['label']) . ' to confirm</label>'
+                . '<input id="reset_confirmation" name="confirmation" autocomplete="off" required>'
+                . '<div class="form-actions"><button type="submit">Clear demo records for this cycle</button></div></form>'
+                . '</details>';
+        }
         return '<section class="card"><h2>1. Confirm the academic year</h2>'
             . '<p>This year is <strong>' . View::e($cycle['label']) . '</strong>. '
             . 'The correct active year is important because imports and recommendations are connected to it.</p>'
@@ -299,7 +348,8 @@ final class CycleWizardController extends BaseAdminController
             . '<input type="datetime-local" id="program_review_due_at" name="program_review_due_at" value="' . View::e($due) . '"></div>'
             . '<div><label for="thank_you_due_at">Student thank-you deadline</label>'
             . '<input type="datetime-local" id="thank_you_due_at" name="thank_you_due_at" value="' . View::e($thank) . '"></div>'
-            . '</div><div class="form-actions"><button type="submit">Save dates and continue</button></div></form></section>';
+            . '</div><div class="form-actions"><button type="submit">Save dates and continue</button></div></form></section>'
+            . $demoReset;
     }
 
     private function awardsStep(array $cycle, array $counts): string
