@@ -103,9 +103,35 @@ final class TestDataCleaner
 
         $this->pdo->beginTransaction();
         try {
+            $studentsStmt = $this->pdo->prepare(
+                'SELECT DISTINCT student_id FROM (
+                    SELECT student_id FROM applications WHERE cycle_id = ?
+                    UNION SELECT student_id FROM awards WHERE cycle_id = ?
+                    UNION SELECT student_id FROM historical_awards WHERE cycle_id = ?
+                    UNION SELECT er.student_id FROM enrollment_records er
+                      JOIN enrollment_imports ei ON ei.id = er.enrollment_import_id WHERE ei.cycle_id = ?
+                    UNION SELECT r.student_id FROM recommendations r
+                      JOIN cycle_allocations ca ON ca.id = r.cycle_allocation_id
+                      JOIN cycle_scholarships cs ON cs.id = ca.cycle_scholarship_id
+                      WHERE cs.cycle_id = ?
+                ) affected'
+            );
+            $studentsStmt->execute([$cycleId,$cycleId,$cycleId,$cycleId,$cycleId]);
+            $candidateStudents = array_map('intval', $studentsStmt->fetchAll(PDO::FETCH_COLUMN));
+
             $fundIds = $this->pdo->prepare('SELECT scholarship_id FROM cycle_scholarships WHERE cycle_id = ?');
             $fundIds->execute([$cycleId]);
             $candidateFunds = array_map('intval', $fundIds->fetchAll(PDO::FETCH_COLUMN));
+            $sourceFunds = $this->pdo->prepare(
+                'SELECT DISTINCT sfr.scholarship_id FROM annual_fund_source_rows sfr
+                 JOIN annual_authority_imports ai ON ai.id = sfr.annual_authority_import_id
+                 WHERE ai.cycle_id = ? AND sfr.scholarship_id IS NOT NULL'
+            );
+            $sourceFunds->execute([$cycleId]);
+            $candidateFunds = array_values(array_unique(array_merge(
+                $candidateFunds,
+                array_map('intval', $sourceFunds->fetchAll(PDO::FETCH_COLUMN))
+            )));
 
             // Cycle-specific recipient workflow and notification references.
             $statements = [
@@ -191,6 +217,46 @@ final class TestDataCleaner
                 $this->pdo->prepare('DELETE FROM scholarships WHERE id = ?')
                     ->execute([$scholarshipId]);
             }
+
+            // Remove only orphan synthetic student records associated with this
+            // cycle. Synthetic recipient user accounts are disabled but retained
+            // for audit and account-configuration continuity.
+            foreach ($candidateStudents as $studentId) {
+                $emailStmt = $this->pdo->prepare('SELECT email FROM students WHERE id = ?');
+                $emailStmt->execute([$studentId]);
+                $email = strtolower((string)$emailStmt->fetchColumn());
+                if (!str_ends_with($email, '@example.test')) {
+                    continue;
+                }
+                $this->pdo->prepare(
+                    "UPDATE users SET student_id = NULL, active = 0
+                     WHERE student_id = ? AND LOWER(email) LIKE '%@example.test'"
+                )->execute([$studentId]);
+                $otherStudentData = $this->count(
+                    'SELECT (SELECT COUNT(*) FROM applications WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM awards WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM recommendations WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM enrollment_records WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM rubric_scores WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM eligibility_assessments WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM renewal_candidates WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM historical_awards WHERE student_id = ?)
+                          + (SELECT COUNT(*) FROM application_import_rows WHERE mapped_student_id = ?)
+                          + (SELECT COUNT(*) FROM users WHERE student_id = ?)',
+                    array_fill(0, 10, $studentId)
+                );
+                if ($otherStudentData === 0) {
+                    $this->pdo->prepare('DELETE FROM students WHERE id = ?')->execute([$studentId]);
+                }
+            }
+            // Disable only the three known demo accounts. These are not
+            // legitimate College reviewer assignments.
+            $this->pdo->exec(
+                "UPDATE users SET active = 0
+                 WHERE email IN ('jordan.reviewer@example.test',
+                                 'taylor.chair@example.test',
+                                 'avery.johnson@example.test')"
+            );
 
             // Preserve year, fall/spring terms, configuration and staff accounts.
             $this->pdo->prepare(
