@@ -133,7 +133,11 @@ final class HistoricalAwardImportService
                     }
 
                     $scholarshipStmt=$this->pdo->prepare(
-                        'SELECT id FROM scholarships WHERE uica_account_number=? LIMIT 1'
+                        'SELECT id
+                         FROM scholarships
+                         WHERE uica_account_number=?
+                         ORDER BY (source_record_key = uica_account_number) DESC, id
+                         LIMIT 1'
                     );
                     $scholarshipStmt->execute([$uica]);
                     $scholarshipId=$scholarshipStmt->fetchColumn();

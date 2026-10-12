@@ -10,9 +10,11 @@ use App\Policies\ProgramScopePolicy;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Admin\RecipientAdminController;
 use App\Controllers\ReviewController;
+use App\Controllers\AwardWorkspaceController;
 use App\Controllers\RecipientController;
 use App\Controllers\ActivationController;
 use App\Controllers\Admin\ApplicantController;
+use App\Controllers\Admin\AnnualAwardAuthorityController;
 use App\Controllers\Admin\CycleController;
 use App\Controllers\Admin\CycleReportController;
 use App\Controllers\Admin\DeanReviewController;
@@ -65,8 +67,10 @@ $reviewSetupController = new ReviewSetupController($pdo, $auth);
 $recipientAdminController = new RecipientAdminController($pdo, $auth);
 $thankYouAdminController = new ThankYouAdminController($pdo, $auth);
 $applicantController = new ApplicantController($pdo, $auth);
+$annualAwardAuthorityController = new AnnualAwardAuthorityController($pdo, $auth);
 $userController = new UserController($pdo, $auth);
 $reviewController = new ReviewController($pdo, $auth, new ProgramScopePolicy($pdo));
+$awardWorkspace = new AwardWorkspaceController($pdo, $auth);
 
 $router->get('/healthz', static function () use ($pdo): string {
     header('Content-Type: text/plain; charset=utf-8');
@@ -139,93 +143,15 @@ $router->post('/logout', static function () use ($auth): never {
     exit;
 });
 
-$router->get('/dashboard', static function () use ($auth, $pdo): string {
-    if (!$auth->check()) {
-        header('Location: /login');
-        exit;
-    }
-    if ($auth->personType() === 'student') {
-        header('Location: /portal');
-        exit;
-    }
-
-    if (in_array($auth->staffRole(), ['program_coordinator', 'department_chair'], true)) {
-        header('Location: /review');
-        exit;
-    }
-
-    $cycle = $pdo->query(
-        'SELECT * FROM academic_cycles WHERE is_current = 1 LIMIT 1'
-    )->fetch() ?: null;
-
-    $cycleId = $cycle ? (int) $cycle['id'] : 0;
-    $scholarships = 0;
-    $renewals = 0;
-    $applicants = 0;
-    $reviewUnits = 0;
-    $unresolvedMappings = (int) $pdo->query(
-        "SELECT COUNT(*) FROM program_mapping_queue WHERE status = 'unresolved'"
-    )->fetchColumn();
-
-    if ($cycleId > 0) {
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM cycle_scholarships WHERE cycle_id = ?');
-        $stmt->execute([$cycleId]);
-        $scholarships = (int) $stmt->fetchColumn();
-
-        $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM renewal_candidates
-             WHERE cycle_id = ? AND status IN ('pending_amount','pending_review','hold')"
-        );
-        $stmt->execute([$cycleId]);
-        $renewals = (int) $stmt->fetchColumn();
-
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM applications WHERE cycle_id = ? AND active = 1');
-        $stmt->execute([$cycleId]);
-        $applicants = (int) $stmt->fetchColumn();
-
-        $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM cycle_review_units
-             WHERE cycle_id = ? AND status NOT IN ('submitted','closed','resubmitted')"
-        );
-        $stmt->execute([$cycleId]);
-        $reviewUnits = (int) $stmt->fetchColumn();
-    }
-
-    $cycleLabel = $cycle ? View::e($cycle['label']) : 'No current cycle';
-    $cycleStatus = $cycle ? View::status($cycle['status']) : View::status('setup');
-    $token = View::csrfField();
-
-    $setupAction = $cycle
-        ? '<a class="button" href="/admin/cycles/' . $cycleId . '/setup">Continue cycle setup</a>'
-        : '<a class="button" href="/admin/cycles">Create academic cycle</a>';
-
-    $body = Flash::render()
-        . '<div class="page-header"><div><h1>Scholarship Manager</h1><p><strong>' . $cycleLabel . '</strong> · ' . $cycleStatus . '</p></div>'
-        . '<form method="post" action="/logout">' . $token . '<button class="secondary" type="submit">Sign out</button></form></div>'
-        . '<div class="grid" aria-label="Current cycle summary">'
-        . '<section class="stat"><span>Scholarships</span><strong>' . $scholarships . '</strong></section>'
-        . '<section class="stat"><span>Renewals needing review</span><strong>' . $renewals . '</strong></section>'
-        . '<section class="stat"><span>Applicants</span><strong>' . $applicants . '</strong></section>'
-        . '<section class="stat"><span>Review units outstanding</span><strong>' . $reviewUnits . '</strong></section>'
-        . '<section class="stat"><span>Program mappings unresolved</span><strong>' . $unresolvedMappings . '</strong></section>'
-        . '</div>'
-        . '<section class="card" style="margin-top:1rem"><h2>Current workflow</h2><div class="actions">'
-        . $setupAction
-        . '<a class="button secondary" href="/admin/planning">Annual planning</a>'
-        . '<a class="button secondary" href="/admin/renewals">Renewals</a>'
-        . '<a class="button secondary" href="/admin/allocations">Allocations</a>'
-        . '<a class="button secondary" href="/admin/applicants">Applicants</a>'
-        . '<a class="button secondary" href="/review">Program review</a>'
-        . '</div></section>';
-
-    return View::layout(
-        'Dashboard',
-        $body,
-        $auth->displayName(),
-        $auth->staffRole(),
-        $cycle['label'] ?? null
-    );
-});
+/* The three primary screens: inventory, recipient recommendations, and processing. */
+$router->get('/dashboard', fn(array $p = []): never => $awardWorkspace->home());
+$router->get('/awards/available', fn(array $p = []): string => $awardWorkspace->available());
+$router->get('/awards/recommendations', fn(array $p = []): string => $awardWorkspace->recommendations());
+$router->post('/awards/recommendations/recruitment', fn(array $p = []): never => $awardWorkspace->nominateRecruitment());
+$router->get('/awards/tracker', fn(array $p = []): string => $awardWorkspace->tracker());
+$router->get('/awards/allocations/template', fn(array $p = []): never => $awardWorkspace->allocationTemplate());
+$router->post('/awards/allocations/import', fn(array $p = []): never => $awardWorkspace->importAllocations());
+$router->post('/awards/maui-export', fn(array $p = []): never => $awardWorkspace->exportMaui());
 
 /* Recipient activation and portal */
 $router->get('/activate/{token}', fn(array $p): string => $activationController->form($p));
@@ -268,6 +194,10 @@ $router->post('/admin/cycles/{id}/current', fn(array $p): never => $cycleControl
 $router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleController->setup($p));
 $router->post('/admin/cycles/{id}/checklist/{item}', fn(array $p): never => $cycleController->checklist($p));
 $router->post('/admin/cycles/{id}/dates', fn(array $p): never => $cycleController->saveDates($p));
+
+/* Annual award authority */
+$router->get('/admin/award-authority', fn(array $p = []): string => $annualAwardAuthorityController->index());
+$router->post('/admin/award-authority', fn(array $p = []): never => $annualAwardAuthorityController->import());
 
 /* Annual planning and renewals */
 $router->get('/admin/planning', fn(array $p = []): string => $planningController->planning());

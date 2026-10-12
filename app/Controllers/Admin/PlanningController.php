@@ -23,6 +23,11 @@ final class PlanningController extends BaseAdminController
                 cs.total_authorized_amount,
                 cs.planned_new_award_count,
                 cs.suggested_new_award_amount,
+                cs.award_category,
+                cs.award_plan_text,
+                cs.source_department_area,
+                cs.source_student_level,
+                cs.authority_note,
                 cs.planning_status,
                 s.uica_account_number,
                 s.mfk,
@@ -52,9 +57,19 @@ final class PlanningController extends BaseAdminController
             $available = max(0, (float) $row['total_authorized_amount'] - (float) $row['confirmed_renewals']);
             $remaining = max(0, $available - (float) $row['allocated_new']);
 
+            $guidance = $row['award_plan_text'] ?: '—';
+            $sourceMeta = implode(' · ', array_values(array_filter([
+                $row['source_department_area'] ?? null,
+                $row['source_student_level'] ?? null,
+            ], static fn($value): bool => trim((string)$value) !== '')));
+
             $rows .= '<tr>'
                 . '<td><strong>' . View::e($row['name']) . '</strong><br><span class="muted">UICA '
                 . View::e($row['uica_account_number']) . ($row['mfk'] ? ' · MFK ' . View::e($row['mfk']) : '') . '</span></td>'
+                . '<td>' . View::e($guidance)
+                . ($sourceMeta !== '' ? '<br><span class="muted">' . View::e($sourceMeta) . '</span>' : '')
+                . ($row['authority_note'] ? '<br><span class="muted">Authority note: ' . View::e($row['authority_note']) . '</span>' : '')
+                . '</td>'
                 . '<td class="num">' . View::money($row['total_authorized_amount']) . '</td>'
                 . '<td class="num">' . View::money($row['confirmed_renewals']) . '</td>'
                 . '<td class="num">' . View::money($available) . '</td>'
@@ -66,7 +81,7 @@ final class PlanningController extends BaseAdminController
         }
 
         if ($rows === '') {
-            $rows = '<tr><td colspan="8">No scholarships have been added to this cycle yet.</td></tr>';
+            $rows = '<tr><td colspan="9">No scholarships have been added to this cycle yet.</td></tr>';
         }
 
         $body = <<<HTML
@@ -75,12 +90,14 @@ final class PlanningController extends BaseAdminController
         <h1>Annual scholarship planning</h1>
         <p>Set the Dean's Office annual award budget, account for renewals, and track dollars available for new awards.</p>
     </div>
+    <div class="actions"><a class="button" href="/admin/award-authority">Import award authority</a></div>
 </div>
 <div class="table-wrap">
 <table>
     <thead>
         <tr>
             <th>Scholarship</th>
+            <th>Award guidance</th>
             <th class="num">Annual total</th>
             <th class="num">Renewals</th>
             <th class="num">New available</th>
@@ -126,6 +143,58 @@ HTML;
             ? '<p><strong>Amount rule:</strong> ' . View::e($plan['manual_amount_rule_text']) . '</p>'
             : '';
 
+        $guidance = '';
+        if ($plan['award_plan_text']) {
+            $guidance .= '<p><strong>Award guidance:</strong> ' . View::e($plan['award_plan_text']) . '</p>';
+        }
+        $sourceMeta = implode(' · ', array_values(array_filter([
+            $plan['source_department_area'] ?? null,
+            $plan['source_student_level'] ?? null,
+        ], static fn($value): bool => trim((string)$value) !== '')));
+        if ($sourceMeta !== '') {
+            $guidance .= '<p><strong>Workbook routing:</strong> ' . View::e($sourceMeta) . '</p>';
+        }
+        if ($plan['authority_note']) {
+            $guidance .= '<div class="notice"><strong>Authority note:</strong> ' . View::e($plan['authority_note']) . '</div>';
+        }
+
+        $snapshotStmt = $this->pdo->prepare(
+            'SELECT fs.*, ai.filename, ai.created_at AS imported_at
+             FROM cycle_fund_financial_snapshots fs
+             JOIN annual_authority_imports ai ON ai.id = fs.annual_authority_import_id
+             WHERE fs.cycle_scholarship_id = ?
+             ORDER BY fs.id DESC LIMIT 1'
+        );
+        $snapshotStmt->execute([$id]);
+        $snapshot = $snapshotStmt->fetch() ?: null;
+
+        $snapshotHtml = '';
+        if ($snapshot) {
+            $moneyOrDash = static fn(mixed $value): string => $value === null ? '—' : View::money($value);
+            $donorReport = $snapshot['donor_report_required'] === null
+                ? '—'
+                : ((int)$snapshot['donor_report_required'] === 1 ? 'Yes' : 'No');
+            $contact = implode(' · ', array_values(array_filter([
+                $snapshot['donor_report_recipient'] ?? null,
+                $snapshot['donor_report_contact'] ?? null,
+            ], static fn($value): bool => trim((string)$value) !== '')));
+
+            $snapshotHtml = '<section class="card" style="margin-top:1rem"><h2>Administrator fund snapshot</h2>'
+                . '<p class="muted">Financial and donor-reporting details from the imported workbook. These fields are not exposed to faculty reviewers.</p>'
+                . '<div class="grid">'
+                . '<section class="stat"><span>Account balance</span><strong>' . $moneyOrDash($snapshot['account_balance']) . '</strong></section>'
+                . '<section class="stat"><span>Next payout projection</span><strong>' . $moneyOrDash($snapshot['next_fy_payout_projection']) . '</strong></section>'
+                . '<section class="stat"><span>Spendable cash</span><strong>' . $moneyOrDash($snapshot['spendable_cash']) . '</strong></section>'
+                . '<section class="stat"><span>Endowed investment</span><strong>' . $moneyOrDash($snapshot['endowed_investment']) . '</strong></section>'
+                . '</div>'
+                . '<p><strong>Donor report required:</strong> ' . View::e($donorReport) . '</p>'
+                . ($contact !== '' ? '<p><strong>Donor report contact:</strong> ' . View::e($contact) . '</p>' : '')
+                . ($snapshot['uica_comments'] ? '<p><strong>UICA comments:</strong> ' . nl2br(View::e($snapshot['uica_comments'])) . '</p>' : '')
+                . '<p class="muted">Source: ' . View::e($snapshot['filename']) . ' · '
+                . View::e($snapshot['source_sheet']) . ' row ' . (int)$snapshot['source_row_number'] . '</p>'
+                . '</section>';
+        }
+
         $body = '<div class="page-header"><div><h1>' . View::e($plan['name']) . '</h1>'
             . '<p>UICA ' . View::e($plan['uica_account_number']) . '</p></div>'
             . '<a class="button secondary" href="/admin/planning">Back to planning</a></div>'
@@ -135,7 +204,9 @@ HTML;
             . '<section class="stat"><span>Allocated</span><strong>' . View::money($summary['allocated_new']) . '</strong></section>'
             . '<section class="stat"><span>Unallocated</span><strong>' . View::money($summary['unallocated_new']) . '</strong></section>'
             . '</div>'
+            . $snapshotHtml
             . '<section class="card" style="margin-top:1rem"><h2>Annual plan</h2>'
+            . $guidance
             . '<form method="post" action="/admin/planning/' . $id . '">'
             . View::csrfField()
             . '<div class="form-grid">'

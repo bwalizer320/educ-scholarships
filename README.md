@@ -45,6 +45,7 @@ University-specific production integrations intentionally remain separate:
 - cycle reports/CSV exports and closeout
 - audit logging
 - fake end-to-end test data
+- FY27 scholarship workbook import/seed workflow
 - deployment doctor and health endpoint
 
 ## Local setup
@@ -56,6 +57,7 @@ php bin/console migrate
 php bin/console seed:base
 php bin/console seed:admin
 APP_ENV=testing php bin/console seed:test
+APP_ENV=testing php bin/console seed:fy27 "/path/to/FY27 Scholarship Amounts.xlsx"
 composer test
 ```
 
@@ -87,6 +89,7 @@ php bin/console migrate
 php bin/console seed:base
 php bin/console seed:admin
 APP_ENV=testing php bin/console seed:test
+APP_ENV=testing php bin/console seed:fy27 "/path/to/FY27 Scholarship Amounts.xlsx"
 php bin/console doctor
 php bin/console jobs:work
 ```
@@ -115,9 +118,21 @@ The application separates:
 - term distributions
 - structured historical awards
 
-UICA Account Number is the primary scholarship business/accounting identifier. MFK is stored as a secondary identifier.
+UICA/Fund ID identifies the underlying accounting fund, but one fund can support multiple distinct award pools. Scholarship records therefore use a separate source-record key while retaining the shared UICA/Fund ID. MFK remains a secondary identifier.
 
 Imported program names are never allowed to create arbitrary College programs. They are resolved into the canonical Department → Program → official program-offering architecture.
+
+## FY27 workbook test data
+
+In non-production environments, the real FY27 scholarship workbook can be loaded as repeatable test data:
+
+```bash
+APP_ENV=testing php bin/console seed:fy27 "/path/to/FY27 Scholarship Amounts.xlsx"
+```
+
+The importer reads the scholarship and spring-award simplified sheets, both detailed All data sheets, and the UICA account sheet. It creates the 2026-27 cycle, imports annual award authority, preserves the original source rows, and stores detailed fund/account information for administrators only. Re-running the command updates the cycle rather than creating duplicate award-pool records.
+
+The importer also supports multiple scholarships/award pools on one UICA fund. This is required for FY27 fund 30-350-022, which contains separate Stucker, Chung, and general Student Aid Fund award pools.
 
 ## Testing
 
@@ -129,6 +144,7 @@ GitHub Actions validates:
 - official College program seed data
 - fake reviewer/applicant/recipient workflow data
 - seeded workflow integration assertions
+- FY27 workbook import behavior, including multiple award pools sharing one UICA fund
 - deployment readiness checks
 - domain behavior tests
 

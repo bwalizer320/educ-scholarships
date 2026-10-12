@@ -76,9 +76,8 @@ final class ReviewController
         }
 
         $allocStmt = $this->pdo->prepare(
-            "SELECT ca.*, cs.total_authorized_amount, s.name AS scholarship_name,
-                    s.uica_account_number, siv.original_intent_text,
-                    sar.amount_mode, sar.renewable
+            "SELECT ca.*, cs.award_plan_text, s.name AS scholarship_name,
+                    siv.structured_summary, sar.amount_mode, sar.renewable
              FROM cycle_allocations ca
              JOIN cycle_scholarships cs ON cs.id = ca.cycle_scholarship_id
              JOIN scholarships s ON s.id = cs.scholarship_id
@@ -91,7 +90,7 @@ final class ReviewController
         $allocations = $allocStmt->fetchAll();
 
         $renewalStmt = $this->pdo->prepare(
-            "SELECT rc.*, s.name AS scholarship_name, st.display_name AS student_name
+            "SELECT rc.id, rc.status, s.name AS scholarship_name, st.display_name AS student_name
              FROM renewal_candidates rc
              JOIN scholarships s ON s.id = rc.scholarship_id
              JOIN students st ON st.id = rc.student_id
@@ -104,15 +103,12 @@ final class ReviewController
 
         $renewalHtml = '';
         foreach ($renewals as $renewal) {
-            $amount = $renewal['proposed_current_amount'] !== null
-                ? View::money($renewal['proposed_current_amount'])
-                : 'Amount pending';
             $renewalHtml .= '<tr><td>' . View::e($renewal['scholarship_name']) . '</td>'
                 . '<td>' . View::e($renewal['student_name']) . '</td>'
-                . '<td>' . $amount . '</td><td>' . View::status($renewal['status']) . '</td></tr>';
+                . '<td>' . View::status($renewal['status']) . '</td></tr>';
         }
         if ($renewalHtml === '') {
-            $renewalHtml = '<tr><td colspan="4">No renewable awards for this unit.</td></tr>';
+            $renewalHtml = '<tr><td colspan="3">No renewable awards for this unit.</td></tr>';
         }
 
         $tabs = '<div class="actions" style="margin-bottom:1rem">'
@@ -140,7 +136,8 @@ final class ReviewController
             . View::status($reviewUnit['status']) . '</p></div>' . $submit . '</div>'
             . $readOnly
             . '<section class="card" style="margin-bottom:1rem"><h2>Renewable awards — view only</h2>'
-            . '<div class="table-wrap"><table><thead><tr><th>Scholarship</th><th>Student</th><th>Current amount</th><th>Status</th></tr></thead><tbody>'
+            . '<p class="muted">Renewal funding is managed by the Dean’s Office. Reviewers can see who is renewing and the current status, but not fund-level financial details.</p>'
+            . '<div class="table-wrap"><table><thead><tr><th>Scholarship</th><th>Student</th><th>Status</th></tr></thead><tbody>'
             . $renewalHtml . '</tbody></table></div></section>'
             . $tabs . $content;
 
@@ -160,9 +157,8 @@ final class ReviewController
 
         $stmt = $this->pdo->prepare(
             "SELECT ca.*, cs.id AS cycle_scholarship_id, cs.suggested_new_award_amount AS cycle_suggested,
-                    s.name AS scholarship_name, s.uica_account_number,
-                    siv.original_intent_text, siv.structured_summary,
-                    sar.amount_mode, sar.manual_amount_rule_text
+                    cs.award_plan_text, s.name AS scholarship_name,
+                    siv.structured_summary, sar.amount_mode, sar.manual_amount_rule_text
              FROM cycle_allocations ca
              JOIN cycle_scholarships cs ON cs.id = ca.cycle_scholarship_id
              JOIN scholarships s ON s.id = cs.scholarship_id
@@ -282,12 +278,23 @@ final class ReviewController
             ? View::e(ucwords(str_replace('_', ' ', $allocation['amount_mode'])))
             : 'Not configured';
 
+        $guidance = '';
+        if ($allocation['structured_summary']) {
+            $guidance .= '<p>' . nl2br(View::e($allocation['structured_summary'])) . '</p>';
+        }
+        if ($allocation['award_plan_text']) {
+            $guidance .= '<p><strong>Award guidance:</strong> ' . View::e($allocation['award_plan_text']) . '</p>';
+        }
+        if ($guidance === '') {
+            $guidance = '<p class="muted">No additional scholarship guidance is available.</p>';
+        }
+
         $body = Flash::render()
-            . '<div class="page-header"><div><h1>' . View::e($allocation['scholarship_name']) . '</h1><p>UICA '
-            . View::e($allocation['uica_account_number']) . ' · Allocation ' . View::money($allocation['authorized_new_amount'])
-            . ' · ' . $amountRule . '</p></div><a class="button secondary" href="/review/' . $orgUnitId . '">Back to program</a></div>'
-            . '<section class="card"><h2>Donor intent</h2><p>' . nl2br(View::e($allocation['original_intent_text'])) . '</p>'
-            . '<h3>Structured criteria</h3><ul class="criteria">' . $criteriaRows . '</ul></section>'
+            . '<div class="page-header"><div><h1>' . View::e($allocation['scholarship_name']) . '</h1><p>Program recommendation budget '
+            . View::money($allocation['authorized_new_amount']) . ' · ' . $amountRule
+            . '</p></div><a class="button secondary" href="/review/' . $orgUnitId . '">Back to program</a></div>'
+            . '<section class="card"><h2>Scholarship guidance</h2>' . $guidance
+            . '<h3>Eligibility criteria</h3><ul class="criteria">' . $criteriaRows . '</ul></section>'
             . '<section class="card" style="margin-top:1rem"><h2>Applicants</h2>'
             . '<div class="table-wrap"><table><thead><tr><th>Student</th><th>GPA</th><th>Eligibility</th><th>Rubric</th><th>Recommendation</th></tr></thead><tbody>'
             . $candidateRows . '</tbody></table></div></section>';
@@ -777,10 +784,13 @@ final class ReviewController
             $recStmt->execute([(int) $allocation['id']]);
             $summary = $recStmt->fetch();
 
+            $guidance = $allocation['award_plan_text']
+                ? '<br><span class="muted">' . View::e($allocation['award_plan_text']) . '</span>'
+                : '';
+
             $rows .= '<tr>'
                 . '<td><a href="/review/' . $orgUnitId . '/allocation/' . (int) $allocation['id'] . '"><strong>'
-                . View::e($allocation['scholarship_name']) . '</strong></a><br><span class="muted">UICA '
-                . View::e($allocation['uica_account_number']) . '</span></td>'
+                . View::e($allocation['scholarship_name']) . '</strong></a>' . $guidance . '</td>'
                 . '<td class="num">' . View::money($allocation['authorized_new_amount']) . '</td>'
                 . '<td>' . (int) $summary['count'] . '</td>'
                 . '<td class="num">' . View::money($summary['total']) . '</td>'
@@ -793,8 +803,8 @@ final class ReviewController
             $rows = '<tr><td colspan="6">No scholarship allocations assigned to this unit.</td></tr>';
         }
 
-        return '<section class="card"><h2>Scholarships</h2><div class="table-wrap"><table>'
-            . '<thead><tr><th>Scholarship</th><th class="num">Allocation</th><th>Recommended</th><th class="num">Recommended total</th><th>Status</th><th>Action</th></tr></thead>'
+        return '<section class="card"><h2>Scholarships</h2><p class="muted">The budget shown is the amount this program may recommend, not the scholarship fund’s full annual authority.</p><div class="table-wrap"><table>'
+            . '<thead><tr><th>Scholarship</th><th class="num">Program budget</th><th>Recommended</th><th class="num">Recommended total</th><th>Status</th><th>Action</th></tr></thead>'
             . '<tbody>' . $rows . '</tbody></table></div></section>';
     }
 

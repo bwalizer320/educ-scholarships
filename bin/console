@@ -6,13 +6,14 @@ declare(strict_types=1);
 use App\Database\AdminSeeder;
 use App\Database\BaseSeeder;
 use App\Database\Connection;
+use App\Database\Fy27ScholarshipSeeder;
 use App\Database\Migrator;
 use App\Database\TestSeeder;
-use App\Support\Env;
-use App\Support\Doctor;
 use App\Mail\MailProviderFactory;
 use App\Services\Notifications\MailJobWorker;
 use App\Storage\LocalFileStorage;
+use App\Support\Doctor;
+use App\Support\Env;
 
 $root = require dirname(__DIR__) . '/app/bootstrap.php';
 
@@ -77,6 +78,32 @@ switch ($command) {
         );
         break;
 
+    case 'seed:fy27':
+        $workbookPath = $argv[2] ?? (Env::get('FY27_SCHOLARSHIP_WORKBOOK', '') ?? '');
+        if ($workbookPath === '') {
+            fwrite(STDERR, "Usage: php bin/console seed:fy27 \"/path/to/FY27 Scholarship Amounts.xlsx\"\n");
+            fwrite(STDERR, "Or set FY27_SCHOLARSHIP_WORKBOOK in the environment.\n");
+            exit(2);
+        }
+
+        $seeder = new Fy27ScholarshipSeeder(Connection::get(), new LocalFileStorage());
+        $result = $seeder->run($workbookPath);
+
+        fwrite(
+            STDOUT,
+            sprintf(
+                "Loaded FY27 scholarship test data into %s: %d award rows, %d cycle scholarships, %d catalog scholarships, $%s authorized, %d source rows preserved, %d warning(s).\n",
+                $result['cycle_label'],
+                $result['authority_rows'],
+                $result['cycle_scholarships'],
+                $result['catalog_scholarships'],
+                number_format((float)$result['cycle_authority_total'], 2),
+                $result['source_rows'],
+                $result['warnings']
+            )
+        );
+        break;
+
     case 'doctor':
         $checks = Doctor::run($root);
         $failed = 0;
@@ -110,6 +137,7 @@ switch ($command) {
         fwrite(STDOUT, "  seed:base   Seed College departments and official graduate program offerings\n");
         fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
         fwrite(STDOUT, "  seed:test   Load fake scholarship/reviewer/applicant data (non-production only)\n");
+        fwrite(STDOUT, "  seed:fy27   Load the FY27 scholarship workbook as non-production test data\n");
         fwrite(STDOUT, "  jobs:work   Process up to 25 queued notification email jobs\n");
         fwrite(STDOUT, "  doctor      Check PHP extensions, database, storage, and production settings\n");
         break;
