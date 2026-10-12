@@ -197,6 +197,7 @@ $router->get('/setup', fn(array $p = []): never => $cycleWizard->current());
 $router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleWizard->index($p));
 $router->post('/admin/cycles/{id}/wizard/awards', fn(array $p): never => $cycleWizard->uploadAwards($p));
 $router->post('/admin/cycles/{id}/wizard/assignment', fn(array $p): never => $cycleWizard->saveAssignment($p));
+$router->post('/admin/cycles/{id}/wizard/reset', fn(array $p): never => $cycleWizard->resetDemo($p));
 $router->post('/admin/cycles/{id}/wizard/open', fn(array $p): never => $cycleWizard->openReview($p));
 $router->post('/admin/cycles/{id}/checklist/{item}', fn(array $p): never => $cycleController->checklist($p));
 $router->post('/admin/cycles/{id}/dates', fn(array $p): never => $cycleController->saveDates($p));
