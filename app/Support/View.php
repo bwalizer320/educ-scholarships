@@ -329,6 +329,10 @@ HTML;
         return '<svg' . $classAttr . ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $paths . '</svg>';
     }
 
+    /**
+     * The three scholarship questions are top-level navigation; infrequent
+     * configuration tools stay available in a collapsed administrative section.
+     */
     private static function nav(?string $role): string
     {
         if ($role === 'student') {
@@ -337,60 +341,50 @@ HTML;
                 . '</nav>';
         }
 
+        $primary = self::navRootItem('/awards/available', 'Available Awards', 'award')
+            . self::navRootItem('/awards/recommendations', 'Awards & Recipients', 'users')
+            . self::navRootItem('/awards/tracker', 'Award Tracker', 'report');
+
         if (in_array($role, ['program_coordinator', 'department_chair'], true)) {
-            return '<nav aria-label="Primary">'
-                . self::navRootItem('/dashboard', 'Dashboard', 'dashboard')
-                . self::navDisclosure('Review', 'review', [
-                    ['/review', 'Program Review'],
-                    ['/thank-yous/review', 'Thank-you Review'],
+            return '<nav aria-label="Primary">' . $primary
+                . self::navDisclosure('Reviewer tools', 'review', [
+                    ['/review', 'Select applicants'],
+                    ['/thank-yous/review', 'Thank-you review'],
                 ])
                 . '</nav>';
         }
 
-        $adminItems = [
-            ['/admin/organization', 'Programs'],
-            ['/admin/users', 'Users'],
-            ['/notifications/ready', 'Notify'],
-            ['/notifications/history', 'Notification History'],
-            ['/admin/templates', 'Templates'],
+        $settings = [
+            ['/admin/cycles', 'Academic cycles'],
+            ['/admin/award-authority', 'FY27 authority workbook'],
+            ['/admin/scholarships', 'Scholarship catalog'],
+            ['/admin/allocations', 'Edit allocations'],
+            ['/admin/applicants', 'Applicant imports'],
+            ['/admin/enrollment', 'Student eligibility imports'],
+            ['/dean/verification', 'Eligibility & approval'],
+            ['/notifications/ready', 'Letters & notifications'],
+            ['/admin/thank-yous', 'Thank-you submissions'],
+            ['/admin/templates', 'Letter templates'],
+            ['/admin/users', 'User access'],
+            ['/admin/reviewers', 'Reviewer assignments'],
+            ['/admin/organization', 'Departments & programs'],
+            ['/admin/planning', 'Annual planning'],
+            ['/admin/renewals', 'Renewals'],
+            ['/admin/rubrics', 'Rubrics'],
+            ['/dean/reallocation', 'Reallocation'],
+            ['/admin/cycle-report', 'Reports & closeout'],
+            ['/admin/history-imports', 'Historical imports'],
+            ['/notifications/history', 'Notification history'],
+            ['/admin/distribution-requests', 'Distribution requests'],
+            ['/admin/thank-you-reminders', 'Thank-you reminders'],
+            ['/admin/thank-you-reviewers', 'Thank-you reviewers'],
         ];
-
         if ((Env::get('APP_ENV', 'development') ?? 'development') !== 'production') {
-            $adminItems[] = ['/admin/test-mail', 'Testing Mail'];
+            $settings[] = ['/admin/test-mail', 'Test email'];
         }
 
-        return '<nav aria-label="Primary">'
-            . self::navRootItem('/dashboard', 'Dashboard', 'dashboard')
-            . self::navDisclosure('Cycle', 'calendar', [
-                ['/admin/cycles', 'Cycles'],
-                ['/admin/planning', 'Planning'],
-                ['/admin/award-authority', 'Award Authority'],
-                ['/admin/cycle-report', 'Cycle Report'],
-                ['/admin/history-imports', 'History Import'],
-            ])
-            . self::navDisclosure('Awards', 'award', [
-                ['/admin/scholarships', 'Scholarships'],
-                ['/admin/renewals', 'Renewals'],
-                ['/admin/allocations', 'Allocations'],
-                ['/admin/applicants', 'Applicants'],
-                ['/admin/enrollment', 'Enrollment'],
-            ])
-            . self::navDisclosure('Review', 'review', [
-                ['/review', 'Program Review'],
-                ['/admin/reviewers', 'Reviewers'],
-                ['/admin/rubrics', 'Rubrics'],
-                ['/dean/recommendations', 'Dean Review'],
-                ['/dean/reallocation', 'Reallocation'],
-                ['/dean/verification', 'Verification'],
-            ])
-            . self::navDisclosure('Recipients', 'users', [
-                ['/admin/distribution-requests', 'Distribution'],
-                ['/admin/thank-yous', 'Thank-you Letters'],
-                ['/admin/thank-you-reminders', 'Reminders'],
-                ['/thank-yous/review', 'Thank-you Review'],
-                ['/admin/thank-you-reviewers', 'Thank-you Reviewers'],
-            ])
-            . self::navDisclosure('Admin', 'settings', $adminItems)
+        return '<nav aria-label="Primary">' . $primary
+            . self::navDisclosure('Administration', 'settings', $settings)
             . '</nav>';
     }
 
