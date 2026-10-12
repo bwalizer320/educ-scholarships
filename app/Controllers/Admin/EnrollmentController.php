@@ -224,7 +224,7 @@ HTML;
             Flash::error($e->getMessage());
         }
 
-        $this->redirect('/admin/enrollment');
+        $this->redirect(!empty($_POST['wizard']) ? '/setup?step=6' : '/admin/enrollment');
     }
 
     private function csrf(): string
