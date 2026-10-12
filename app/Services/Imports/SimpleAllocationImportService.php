@@ -205,9 +205,11 @@ final class SimpleAllocationImportService
 
         if ($intentId < 1) {
             $this->pdo->prepare(
-                'INSERT INTO scholarship_intent_versions (scholarship_id, version_number, structured_summary, active)
-                 VALUES (?, 1, ?, 1)'
-            )->execute([$scholarshipId, 'Eligibility criteria must be confirmed by the Dean’s Office.']);
+                'INSERT INTO scholarship_intent_versions (scholarship_id, version_number, original_intent_text, structured_summary, active)
+                 VALUES (?, 1, ?, ?, 1)'
+            )->execute([$scholarshipId,
+                'Not included in the standardized allocation file. Dean’s Office must verify the donor instrument.',
+                'Eligibility criteria must be confirmed by the Dean’s Office.']);
             $intentId = (int) $this->pdo->lastInsertId();
             $this->pdo->prepare(
                 'UPDATE scholarships SET current_intent_version_id = ? WHERE id = ?'
