@@ -114,6 +114,18 @@ jobs:
           APP_TIMEZONE: America/Chicago
         run: php tests/simple_workspace.php
 
+      - name: Render all six cycle setup wizard steps
+        env:
+          APP_ENV: testing
+          MAIL_DRIVER: log
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php tests/cycle_wizard_render.php
+
       - name: Test preview-first synthetic cycle cleanup
         env:
           APP_ENV: testing
