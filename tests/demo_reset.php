@@ -12,6 +12,7 @@ $cleaner = new TestDataCleaner($pdo);
 $beforeOrg = (int)$pdo->query('SELECT COUNT(*) FROM org_units')->fetchColumn();
 $beforeUsers = (int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $beforeOfferings = (int)$pdo->query('SELECT COUNT(*) FROM program_offerings')->fetchColumn();
+$beforeCurrent = (int)$pdo->query("SELECT is_current FROM academic_cycles WHERE label = '2027-28'")->fetchColumn();
 $preview = $cleaner->preview('2027-28');
 if ($preview['counts']['awards'] < 1 || $preview['counts']['applications'] < 1
     || $preview['counts']['scholarship_funds'] < 1) {
@@ -32,7 +33,7 @@ if ((int)$pdo->query('SELECT COUNT(*) FROM org_units')->fetchColumn() !== $befor
     throw new RuntimeException('Reset changed department, program, offering, or staff-user configuration.');
 }
 $cycle = $pdo->query("SELECT id, status, is_current FROM academic_cycles WHERE label = '2027-28'")->fetch();
-if (!$cycle || $cycle['status'] !== 'setup' || (int)$cycle['is_current'] !== 1) {
+if (!$cycle || $cycle['status'] !== 'setup' || (int)$cycle['is_current'] !== $beforeCurrent) {
     throw new RuntimeException('Current academic cycle should be reset to setup, not deleted.');
 }
 $termStmt = $pdo->prepare('SELECT COUNT(*) FROM academic_terms WHERE cycle_id = ?');
