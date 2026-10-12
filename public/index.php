@@ -16,6 +16,7 @@ use App\Controllers\ActivationController;
 use App\Controllers\Admin\ApplicantController;
 use App\Controllers\Admin\AnnualAwardAuthorityController;
 use App\Controllers\Admin\CycleController;
+use App\Controllers\Admin\CycleWizardController;
 use App\Controllers\Admin\CycleReportController;
 use App\Controllers\Admin\DeanReviewController;
 use App\Controllers\Admin\EnrollmentController;
@@ -52,6 +53,7 @@ $recipientController = new RecipientController($pdo, $auth);
 $thankYouReviewController = new ThankYouReviewController($pdo, $auth, new UicaAccessService($pdo));
 
 $cycleController = new CycleController($pdo, $auth);
+$cycleWizard = new CycleWizardController($pdo, $auth);
 $cycleReportController = new CycleReportController($pdo, $auth);
 $deanReviewController = new DeanReviewController($pdo, $auth);
 $enrollmentController = new EnrollmentController($pdo, $auth);
@@ -191,7 +193,12 @@ $router->post('/admin/scholarships/{id}/intent-version', fn(array $p): never => 
 $router->get('/admin/cycles', fn(array $p = []): string => $cycleController->index());
 $router->post('/admin/cycles', fn(array $p = []): never => $cycleController->create());
 $router->post('/admin/cycles/{id}/current', fn(array $p): never => $cycleController->makeCurrent($p));
-$router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleController->setup($p));
+$router->get('/setup', fn(array $p = []): never => $cycleWizard->current());
+$router->get('/admin/cycles/{id}/setup', fn(array $p): string => $cycleWizard->index($p));
+$router->post('/admin/cycles/{id}/wizard/awards', fn(array $p): never => $cycleWizard->uploadAwards($p));
+$router->post('/admin/cycles/{id}/wizard/assignment', fn(array $p): never => $cycleWizard->saveAssignment($p));
+$router->post('/admin/cycles/{id}/wizard/reset', fn(array $p): never => $cycleWizard->resetDemo($p));
+$router->post('/admin/cycles/{id}/wizard/open', fn(array $p): never => $cycleWizard->openReview($p));
 $router->post('/admin/cycles/{id}/checklist/{item}', fn(array $p): never => $cycleController->checklist($p));
 $router->post('/admin/cycles/{id}/dates', fn(array $p): never => $cycleController->saveDates($p));
 

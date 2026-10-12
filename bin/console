@@ -9,6 +9,7 @@ use App\Database\Connection;
 use App\Database\Fy27ScholarshipSeeder;
 use App\Database\Migrator;
 use App\Database\TestSeeder;
+use App\Database\TestDataCleaner;
 use App\Mail\MailProviderFactory;
 use App\Services\Notifications\MailJobWorker;
 use App\Storage\LocalFileStorage;
@@ -78,6 +79,37 @@ switch ($command) {
         );
         break;
 
+    case 'reset:demo':
+        $label = $argv[2] ?? '';
+        $flag = $argv[3] ?? '';
+        if (!preg_match('/^\d{4}-\d{2}$/', $label)) {
+            fwrite(STDERR, "Usage: APP_ENV=testing php bin/console reset:demo 2027-28 [--apply=DELETE-2027-28]\n");
+            exit(2);
+        }
+
+        try {
+            $cleaner = new TestDataCleaner(Connection::get());
+            $preview = $cleaner->preview($label);
+            fwrite(STDOUT, "Cycle {$label}: proposed testing-data cleanup\n");
+            foreach ($preview['counts'] as $key => $number) {
+                fwrite(STDOUT, "  " . str_pad(str_replace('_', ' ', $key), 24) . $number . "\n");
+            }
+            fwrite(STDOUT, "Preserved: departments, programs, offerings, users, academic year, terms, review units, rubrics, templates.\n");
+            if ($flag === '') {
+                fwrite(STDOUT, "DRY RUN only. To remove synthetic records, use --apply=DELETE-{$label} with APP_ENV=testing.\n");
+                break;
+            }
+            if ($flag !== '--apply=DELETE-' . $label) {
+                throw new RuntimeException('Confirmation does not match the cycle. No changes made.');
+            }
+            $cleaner->clean($label);
+            fwrite(STDOUT, "Testing cycle {$label} cleared. Preserved configuration and academic terms.\n");
+        } catch (\Throwable $e) {
+            fwrite(STDERR, "Cleanup stopped: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+        break;
+
     case 'seed:fy27':
         $workbookPath = $argv[2] ?? (Env::get('FY27_SCHOLARSHIP_WORKBOOK', '') ?? '');
         if ($workbookPath === '') {
@@ -138,6 +170,7 @@ switch ($command) {
         fwrite(STDOUT, "  seed:admin  Create/update the local bootstrap system administrator from .env\n");
         fwrite(STDOUT, "  seed:test   Load fake scholarship/reviewer/applicant data (non-production only)\n");
         fwrite(STDOUT, "  seed:fy27   Load the FY27 scholarship workbook as non-production test data\n");
+        fwrite(STDOUT, "  reset:demo  Dry run / guarded cleanup of an explicitly named testing cycle\n");
         fwrite(STDOUT, "  jobs:work   Process up to 25 queued notification email jobs\n");
         fwrite(STDOUT, "  doctor      Check PHP extensions, database, storage, and production settings\n");
         break;
