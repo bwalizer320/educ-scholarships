@@ -105,6 +105,15 @@ final class TestDataCleaner
             throw new RuntimeException('Another cycle references these awards for renewals.');
         }
 
+        // A queued email could send after its award record has been removed.
+        // Require an empty job queue rather than deleting unrelated jobs.
+        $pendingJobs = (int)$this->pdo->query(
+            "SELECT COUNT(*) FROM jobs WHERE status IN ('queued','processing')"
+        )->fetchColumn();
+        if ($pendingJobs > 0) {
+            throw new RuntimeException('Cleanup stopped: finish or cancel queued background mail jobs first.');
+        }
+
         $this->pdo->beginTransaction();
         try {
             $studentsStmt = $this->pdo->prepare(
