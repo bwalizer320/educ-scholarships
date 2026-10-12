@@ -79,9 +79,13 @@ final class TestDataCleaner
                 UNION SELECT er.student_id FROM enrollment_records er
                     JOIN enrollment_imports ei ON ei.id = er.enrollment_import_id WHERE ei.cycle_id = ?
                 UNION SELECT student_id FROM historical_awards WHERE cycle_id = ?
+                UNION SELECT rec.student_id FROM recommendations rec
+                  JOIN cycle_allocations ca ON ca.id = rec.cycle_allocation_id
+                  JOIN cycle_scholarships cs ON cs.id = ca.cycle_scholarship_id
+                  WHERE cs.cycle_id = ?
              ) AND LOWER(st.email) NOT LIKE '%@example.test'"
         );
-        $stmt->execute([$cycleId,$cycleId,$cycleId,$cycleId]);
+        $stmt->execute([$cycleId,$cycleId,$cycleId,$cycleId,$cycleId]);
         if ((int)$stmt->fetchColumn() > 0) {
             throw new RuntimeException(
                 'Cleanup stopped: this cycle contains students without @example.test email addresses. '
