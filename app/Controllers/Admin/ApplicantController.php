@@ -158,10 +158,10 @@ HTML;
                 ['filename' => $file['name']]
             );
             Flash::success('File uploaded. Map the source columns before importing.');
-            $this->redirect('/admin/applicants/imports/' . (int) $result['import_id'] . '/map');
+            $this->redirect('/admin/applicants/imports/' . (int) $result['import_id'] . '/map' . (!empty($_POST['wizard']) ? '?wizard=1' : ''));
         } catch (\Throwable $e) {
             Flash::error($e->getMessage());
-            $this->redirect('/admin/applicants');
+            $this->redirect(!empty($_POST['wizard']) ? '/setup?step=4' : '/admin/applicants');
         }
     }
 
@@ -237,11 +237,15 @@ HTML;
             ? '<div class="notice">' . View::e($data['import']['error_summary']) . '</div>'
             : '';
 
+        $wizard = !empty($_GET['wizard']);
+        $backHref = $wizard ? '/setup?step=4' : '/admin/applicants';
+        $wizardField = $wizard ? '<input type="hidden" name="wizard" value="1">' : '';
+
         $body = '<div class="page-header"><div><h1>Map applicant columns</h1><p>'
-            . View::e($data['import']['filename']) . '</p></div><a class="button secondary" href="/admin/applicants">Back to applicants</a></div>'
+            . View::e($data['import']['filename']) . '</p></div><a class="button secondary" href="' . $backHref . '">Back to setup</a></div>'
             . $summary
             . '<section class="card"><h2>Column mapping</h2><p>Required fields are University ID, email, and program. Unused source fields are retained in the application record for later review.</p>'
-            . '<form method="post" action="/admin/applicants/imports/' . $id . '/process">' . View::csrfField()
+            . '<form method="post" action="/admin/applicants/imports/' . $id . '/process">' . View::csrfField() . $wizardField
             . '<div class="form-grid">' . $mappingHtml . '</div>'
             . '<div class="form-actions"><button type="submit">Import applicants</button></div></form></section>'
             . '<section class="card" style="margin-top:1rem"><h2>Source preview</h2><div class="table-wrap"><table><thead><tr>'
@@ -289,7 +293,7 @@ HTML;
             Flash::error($e->getMessage());
         }
 
-        $this->redirect('/admin/applicants');
+        $this->redirect(!empty($_POST['wizard']) ? '/setup?step=5' : '/admin/applicants');
     }
 
     public function mappings(): string
