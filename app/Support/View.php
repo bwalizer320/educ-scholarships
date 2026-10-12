@@ -341,7 +341,8 @@ HTML;
                 . '</nav>';
         }
 
-        $primary = self::navRootItem('/awards/available', 'Available Awards', 'award')
+        $primary = self::navRootItem('/setup', 'Cycle Setup', 'calendar')
+            . self::navRootItem('/awards/available', 'Available Awards', 'award')
             . self::navRootItem('/awards/recommendations', 'Awards & Recipients', 'users')
             . self::navRootItem('/awards/tracker', 'Award Tracker', 'report');
 
@@ -355,7 +356,7 @@ HTML;
         }
 
         $settings = [
-            ['/admin/cycles', 'Academic cycles'],
+            ['/admin/cycles', 'Other academic cycles'],
             ['/admin/award-authority', 'FY27 authority workbook'],
             ['/admin/scholarships', 'Scholarship catalog'],
             ['/admin/allocations', 'Edit allocations'],
