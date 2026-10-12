@@ -33,7 +33,8 @@ final class CycleWizardController extends BaseAdminController
         if (!$cycle) {
             $this->redirect('/admin/cycles');
         }
-        $this->redirect('/admin/cycles/' . (int)$cycle['id'] . '/setup');
+        $step = max(1, min(6, (int)($_GET['step'] ?? 1)));
+        $this->redirect('/admin/cycles/' . (int)$cycle['id'] . '/setup?step=' . $step);
     }
 
     public function index(array $params): string
@@ -248,6 +249,9 @@ final class CycleWizardController extends BaseAdminController
         $cycle = $this->findCycle((int)($params['id'] ?? 0));
         $this->requireActive($cycle);
         try {
+            if (!in_array($cycle['status'], ['setup','ready_for_applicants','review_open'], true)) {
+                throw new RuntimeException('This cycle is already past the review setup stage.');
+            }
             $counts = $this->counts((int)$cycle['id']);
             if ($counts['funds'] < 1 || $counts['allocations'] < 1 || $counts['missing_reviewers'] > 0) {
                 throw new RuntimeException('Import awards, assign allocations, and designate a reviewer for each allocation.');
