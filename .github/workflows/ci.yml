@@ -103,6 +103,17 @@ jobs:
           APP_TIMEZONE: America/Chicago
         run: php tests/fy27_import.php
 
+      - name: Verify simplified award imports
+        env:
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: educ_scholarships
+          DB_USERNAME: scholarship
+          DB_PASSWORD: scholarship
+          APP_TIMEZONE: America/Chicago
+        run: php tests/simple_workspace.php
+
       - name: Run deployment doctor
         env:
           APP_ENV: testing
