@@ -139,7 +139,7 @@ HTML;
             Flash::error($e->getMessage());
         }
 
-        $this->redirect('/admin/cycles');
+        $this->redirect(!empty($_POST['wizard']) ? '/admin/cycles/' . $cycleId . '/setup?step=1' : '/admin/cycles');
     }
 
     public function setup(array $params): string
@@ -271,7 +271,7 @@ HTML;
             ['program_review_due_at' => $programDue, 'thank_you_due_at' => $thankDue]
         );
         Flash::success('Cycle dates saved.');
-        $this->redirect('/admin/cycles/' . $cycleId . '/setup');
+        $this->redirect('/admin/cycles/' . $cycleId . '/setup' . (!empty($_POST['wizard']) ? '?step=2' : ''));
     }
 
     private function toSqlDate(mixed $value): ?string
