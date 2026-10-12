@@ -196,8 +196,8 @@ final class SimpleAllocationImportService
             $intentId = (int) $matches[0]['current_intent_version_id'];
         } else {
             $this->pdo->prepare(
-                "INSERT INTO scholarships (uica_account_number, name, award_type, active)
-                 VALUES (?, ?, 'scholarship', 1)"
+                "INSERT INTO scholarships (public_id, uica_account_number, name, award_type, active)
+                 VALUES (UUID(), ?, ?, 'scholarship', 1)"
             )->execute([$row['account'], $row['name']]);
             $scholarshipId = (int) $this->pdo->lastInsertId();
             $intentId = 0;
