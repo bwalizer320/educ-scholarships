@@ -53,7 +53,7 @@ final class CycleWizardController extends BaseAdminController
             $classes = 'workflow-step' . ($selected ? ' primary' : '');
             $navigation .= '<a class="' . $classes . '" href="/admin/cycles/' . $cycleId . '/setup?step=' . $n . '"'
                 . ($selected ? ' aria-current="step"' : '') . '>'
-                . '<span class="step-number">' . str_pad((string)$n, 2, 2, '0', STR_PAD_LEFT) . '</span>'
+                . '<span class="step-number">' . str_pad((string)$n, 2, '0', STR_PAD_LEFT) . '</span>'
                 . '<span><strong>' . View::e($name) . '</strong><span>' . View::e($description) . '</span></span></a>';
         }
         $content = match ($step) {
